@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hash-based Routing Test</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f3f4f6;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            padding: 20px;
+        }
+        .container {
+            background-color: white;
+            padding: 2.5rem;
+            border-radius: 1.5rem;
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+            width: 100%;
+            max-width: 600px;
+            text-align: center;
+        }
+        .header {
+            font-size: 2rem;
+            font-weight: 700;
+            color: #1f2937;
+            margin-bottom: 1.5rem;
+        }
+        .nav-buttons {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+            margin-bottom: 2rem;
+        }
+        .btn {
+            padding: 0.75rem 1.5rem;
+            border-radius: 0.75rem;
+            font-weight: 600;
+            color: white;
+            transition: background-color 0.2s, transform 0.1s;
+            text-decoration: none;
+            display: block;
+            text-align: center;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        .btn:hover {
+            transform: translateY(-2px);
+        }
+        .btn-blue {
+            background-color: #3b82f6;
+        }
+        .btn-blue:hover {
+            background-color: #2563eb;
+        }
+        .btn-green {
+            background-color: #10b981;
+        }
+        .btn-green:hover {
+            background-color: #059669;
+        }
+        .btn-purple {
+            background-color: #8b5cf6;
+        }
+        .btn-purple:hover {
+            background-color: #7c3aed;
+        }
+        .content {
+            background-color: #f9fafb;
+            padding: 1.5rem;
+            border-radius: 1rem;
+            border: 1px dashed #d1d5db;
+        }
+        .content-header {
+            font-size: 1.25rem;
+            font-weight: 600;
+            color: #4b5563;
+            margin-bottom: 0.5rem;
+        }
+        .content-body {
+            font-size: 1rem;
+            color: #6b7280;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div class="header">Hash-based Routing Test</div>
+    
+    <div class="nav-buttons">
+        <a href="#/home" class="btn btn-blue">Go to Home</a>
+        <a href="#/profile/user/123" class="btn btn-green">Go to Profile</a>
+        <a href="#/products/electronics/laptops" class="btn btn-purple">Go to Products</a>
+    </div>
+
+    <div id="content" class="content">
+        <!-- Content will be dynamically inserted here -->
+        <div class="content-header">Current Page</div>
+        <div class="content-body" id="page-content">Click a button to navigate.</div>
+    </div>
+</div>
+
+<script>
+    // A simple function to render content based on the hash
+    function renderContent() {
+        const hash = window.location.hash;
+        const contentDiv = document.getElementById('page-content');
+        
+        let headerText = '';
+        let bodyText = '';
+
+        switch (hash) {
+            case '#/home':
+                headerText = 'Home Page';
+                bodyText = 'Welcome to the home page! This is the default route.';
+                break;
+            case '#/profile/user/123':
+                headerText = 'User Profile';
+                bodyText = 'Viewing the profile for user ID 123. The URL path is: ' + hash;
+                break;
+            case '#/products/electronics/laptops':
+                headerText = 'Product Category';
+                bodyText = 'You are browsing laptops in the electronics category. The URL path is: ' + hash;
+                break;
+            default:
+                headerText = '404 - Page Not Found';
+                bodyText = 'The requested hash route was not recognized. Please click one of the buttons above.';
+                break;
+        }
+
+        contentDiv.innerHTML = `
+            <div class="content-header">${headerText}</div>
+            <div class="content-body">${bodyText}</div>
+        `;
+    }
+
+    // Call renderContent on initial load
+    renderContent();
+
+    // Listen for hash changes and re-render the content
+    window.addEventListener('hashchange', renderContent);
+</script>
+
+</body>
+</html>
+
