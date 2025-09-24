@@ -258,6 +258,7 @@
         let unsubscribeNotes = null;
         let bookmarksCache = [];
         let notesCache = [];
+        let isAuthReady = false;
 
         // UI Elements
         const globalLoadingOverlay = document.getElementById('global-loading-overlay');
@@ -319,10 +320,6 @@
         
         // --- Routing and View Rendering ---
         const renderBookmarksView = () => {
-            if (!userId) {
-                renderAuthView();
-                return;
-            }
             mainTitle.textContent = "Your Bookmarks";
             contentContainer.innerHTML = `
                 <div class="flex flex-col md:flex-row space-y-4 md:space-y-0 md:space-x-4 mb-8">
@@ -368,10 +365,6 @@
         };
 
         const renderNotesView = () => {
-             if (!userId) {
-                renderAuthView();
-                return;
-            }
             mainTitle.textContent = "Your Notes";
             contentContainer.innerHTML = `
                 <div class="flex flex-col md:flex-row space-y-4 md:space-y-0 md:space-x-4 mb-8">
@@ -401,16 +394,37 @@
         };
         
         const renderNoteEditorView = async (noteId) => {
-             if (!userId) {
-                renderAuthView();
-                return;
-            }
             mainTitle.textContent = "Note Editor";
             contentContainer.innerHTML = `
                 <div class="flex space-x-2 mb-4">
                     <button class="btn-base btn-secondary" onclick="window.location.hash = '#/notes'">Back to Notes</button>
                 </div>
-                <div class="app-card">
+                <div id="note-editor-card" class="app-card">
+                    <div id="note-loading-spinner" class="flex justify-center py-8">
+                        <div class="loader"></div>
+                    </div>
+                </div>
+            `;
+
+            let note = notesCache.find(n => n.id === noteId);
+
+            if (!note) {
+                // If not in cache, try to fetch it directly
+                try {
+                    const docRef = doc(db, `users/${userId}/notes`, noteId);
+                    const docSnap = await getDoc(docRef);
+                    if (docSnap.exists()) {
+                        note = { id: docSnap.id, ...docSnap.data() };
+                    }
+                } catch (error) {
+                    console.error("Error fetching single note:", error);
+                    note = null;
+                }
+            }
+
+            const card = document.getElementById('note-editor-card');
+            if (note) {
+                card.innerHTML = `
                     <h2 class="text-2xl font-semibold mb-4 text-center">Edit Note</h2>
                     <form id="edit-note-form" class="space-y-4">
                         <input type="hidden" id="edit-note-id">
@@ -424,21 +438,20 @@
                         <button id="share-note-btn" class="btn-base btn-secondary">Share</button>
                         <button id="delete-note-btn" class="btn-base bg-red-500 text-white hover:bg-red-600">Delete</button>
                     </div>
-                </div>
-            `;
-            const note = notesCache.find(n => n.id === noteId);
-            if (note) {
+                `;
                 document.getElementById('edit-note-id').value = note.id;
                 document.getElementById('edit-note-title').value = note.title;
                 document.getElementById('edit-note-content').value = note.content;
-            } else {
-                showToast("Note not found.", 'error');
-                window.location.hash = '#/notes';
-            }
 
-            document.getElementById('edit-note-form').addEventListener('submit', (e) => handleEditNoteFormSubmit(e, note.id));
-            document.getElementById('share-note-btn').addEventListener('click', () => shareContent(note, 'notes'));
-            document.getElementById('delete-note-btn').addEventListener('click', () => deleteNote(note.id));
+                document.getElementById('edit-note-form').addEventListener('submit', (e) => handleEditNoteFormSubmit(e, note.id));
+                document.getElementById('share-note-btn').addEventListener('click', () => shareContent(note, 'notes'));
+                document.getElementById('delete-note-btn').addEventListener('click', () => deleteNote(note.id));
+
+            } else {
+                card.innerHTML = `<p class="text-center text-red-500 font-medium py-8">Note not found. Redirecting...</p>`;
+                showToast("Note not found.", 'error');
+                setTimeout(() => window.location.hash = '#/notes', 1000);
+            }
         };
 
         const renderAuthView = () => {
@@ -474,17 +487,15 @@
         };
 
         const router = () => {
+            if (!isAuthReady) return;
             const path = window.location.hash.slice(1).split('/');
             const route = path[1] || 'bookmarks';
             const id = path[2];
 
-            if (!auth || !db) {
-                // Wait for Firebase to be initialized
-                return;
-            }
-
             if (route === 'share') {
                  renderSharedView(id, path[3]);
+            } else if (!userId) {
+                renderAuthView();
             } else if (route === 'notes' && id) {
                  renderNoteEditorView(id);
             } else if (route === 'notes') {
@@ -503,6 +514,7 @@
 
                 onAuthStateChanged(auth, async (user) => {
                     userId = user ? user.uid : null;
+                    isAuthReady = true;
                     router();
                     globalLoadingOverlay.classList.add('hidden');
                 });
