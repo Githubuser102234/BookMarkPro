@@ -3,70 +3,148 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Bookmark Manager</title>
-    <!-- Tailwind CSS CDN -->
+    <title>Modern Bookmark Manager</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- Inter Font -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
+        :root {
+            --bg-color: #f3f4f6;
+            --text-color: #1f2937;
+            --card-bg: #ffffff;
+            --card-border: #e5e7eb;
+            --input-bg: #f9fafb;
+            --input-border: #d1d5db;
+            --accent-color: #4f46e5;
+            --accent-hover: #4338ca;
+        }
+        [data-theme="dark"] {
+            --bg-color: #111827;
+            --text-color: #d1d5db;
+            --card-bg: #1f2937;
+            --card-border: #374151;
+            --input-bg: #111827;
+            --input-border: #4b5563;
+            --accent-color: #818cf8;
+            --accent-hover: #6366f1;
+        }
         body {
             font-family: 'Inter', sans-serif;
-            @apply bg-gray-100 text-gray-800;
+            transition: background-color 0.3s, color 0.3s;
+            background-color: var(--bg-color);
+            color: var(--text-color);
         }
-        .container {
-            @apply max-w-3xl mx-auto px-4 py-8 md:p-12;
+        .container-app {
+            max-width: 90%;
+            width: 100%;
+            margin-left: auto;
+            margin-right: auto;
+            padding-top: 2rem;
+            padding-bottom: 2rem;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: flex-start;
         }
-        .card {
-            @apply bg-white p-6 md:p-8 rounded-2xl shadow-lg transition-all duration-300 border border-gray-200;
+        .app-card {
+            background-color: var(--card-bg);
+            border-radius: 1.5rem;
+            padding: 2rem;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+            border: 1px solid var(--card-border);
+            transition: all 0.3s;
         }
-        .input-field {
-            @apply w-full p-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-colors;
+        .input-base {
+            width: 100%;
+            padding: 0.75rem;
+            border-radius: 0.75rem;
+            border: 1px solid var(--input-border);
+            background-color: var(--input-bg);
+            transition: all 0.2s;
+            outline: none;
         }
-        .btn {
-            @apply py-3 px-6 rounded-xl font-semibold transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2;
+        .input-base:focus {
+            border-color: var(--accent-color);
+            box-shadow: 0 0 0 2px rgba(79, 70, 229, 0.25);
+        }
+        .btn-base {
+            padding: 0.75rem 1.5rem;
+            border-radius: 0.75rem;
+            font-weight: 600;
+            transition: background-color 0.2s, color 0.2s, box-shadow 0.2s;
+            outline: none;
         }
         .btn-primary {
-            @apply bg-indigo-600 text-white hover:bg-indigo-700 focus:ring-indigo-500;
+            background-color: var(--accent-color);
+            color: white;
+        }
+        .btn-primary:hover {
+            background-color: var(--accent-hover);
         }
         .btn-secondary {
-            @apply bg-gray-200 text-gray-800 hover:bg-gray-300 focus:ring-gray-400;
+            background-color: var(--input-border);
+            color: var(--text-color);
         }
-        .dropdown {
-            position: relative;
+        .btn-secondary:hover {
+            background-color: var(--input-border);
         }
-        /* Style for the pop-up menu */
-        .dropdown-menu {
-            @apply absolute right-0 top-full mt-2 w-48 bg-gray-800 text-white border border-gray-700 rounded-xl shadow-xl py-2 z-50 opacity-0 scale-95 transition-all duration-150 transform origin-top-right;
-            display: none;
+        .btn-icon {
+            padding: 0.5rem;
+            border-radius: 50%;
+            transition: all 0.2s;
         }
-        .dropdown-menu.active {
-            @apply opacity-100 scale-100;
-            display: block;
+        .btn-icon:hover {
+            background-color: var(--card-border);
         }
-        .dropdown-item {
-            @apply flex items-center gap-2 px-4 py-2 text-sm text-gray-300 hover:bg-gray-700 w-full text-left transition-colors duration-150;
-        }
-        .modal {
-            @apply fixed inset-0 z-50 flex items-center justify-center p-4 bg-gray-900 bg-opacity-75 backdrop-blur-sm transition-opacity duration-300;
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 100;
             opacity: 0;
             visibility: hidden;
+            transition: opacity 0.3s ease-in-out, visibility 0.3s ease-in-out;
         }
-        .modal.active {
-            @apply opacity-100;
+        .modal-overlay.active {
+            opacity: 1;
             visibility: visible;
         }
         .modal-content {
-            @apply relative w-full h-full bg-white rounded-2xl overflow-hidden;
+            background-color: var(--card-bg);
+            padding: 2rem;
+            border-radius: 1.5rem;
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.2);
+            width: 90%;
+            max-width: 500px;
+            transform: translateY(-20px);
+            transition: transform 0.3s ease-in-out;
         }
-        .iframe-container {
-            @apply w-full h-full;
+        .modal-overlay.active .modal-content {
+            transform: translateY(0);
         }
-        /* Loading spinner animation */
+        #preview-modal .modal-content {
+            width: 95%;
+            height: 95%;
+            max-width: none;
+            max-height: none;
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+        #preview-iframe {
+            flex-grow: 1;
+        }
         .loader {
-            border: 4px solid #f3f3f3;
-            border-top: 4px solid #3498db;
+            border: 4px solid var(--input-border);
+            border-top: 4px solid var(--accent-color);
             border-radius: 50%;
             width: 30px;
             height: 30px;
@@ -78,265 +156,405 @@
         }
     </style>
 </head>
-<body>
-
-    <div class="container min-h-screen flex flex-col items-center justify-start py-10">
-
-        <!-- Main Title -->
-        <div class="text-center mb-12 w-full">
-            <h1 class="text-4xl md:text-5xl font-bold text-indigo-700">Bookmark Manager</h1>
-            <p class="mt-2 text-lg text-gray-600">Your personal space to save and share links.</p>
-        </div>
-
-        <!-- Auth & Loading Section -->
-        <div id="auth-section" class="w-full card text-center space-y-4 flex flex-col items-center justify-center">
-            <div id="loading-spinner" class="loader hidden"></div>
-            <p id="loading-message" class="text-gray-500 mt-4 text-sm"></p>
-            <button id="google-sign-in-btn" class="btn btn-primary w-full max-w-xs">
-                <svg class="inline-block h-5 w-5 mr-2" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
-                    <g clip-path="url(#clip0_1_7)">
-                    <path d="M43.611 20.0833H42V20H24V28H35.0313C34.3639 32.9554 30.1444 36.6346 24.0044 36.6346C16.3188 36.6346 10.1654 30.5694 10.1654 23.0044C10.1654 15.4394 16.3188 9.37424 24.0044 9.37424C27.9944 9.37424 31.5434 10.963 34.0034 13.3769L39.6893 7.68962C35.5398 3.65913 30.0637 1.34145 24.0044 1.34145C11.6669 1.34145 1.58334 11.4249 1.58334 23.7624C1.58334 36.0999 11.6669 46.1834 24.0044 46.1834C36.3419 46.1834 46.4254 36.0999 46.4254 23.7624C46.4254 22.1867 46.223 21.011 46.0354 20.0833H43.611Z" fill="#4285F4"/>
-                    <path d="M10.1654 23.7624C10.1654 26.294 11.0829 28.5144 12.6074 30.292L7.00971 36.0234C4.1942 32.7441 2.58334 28.4067 2.58334 23.7624C2.58334 19.3512 4.09549 15.2285 6.78453 11.9754L12.5539 17.653C11.0829 19.4306 10.1654 21.651 10.1654 23.7624Z" fill="#FBBC05"/>
-                    <path d="M24.0044 9.37424C29.6946 9.37424 33.4357 11.7766 35.7946 14.1673L40.2458 9.71612C37.0048 6.74609 31.7891 5.37424 24.0044 5.37424C19.9892 5.37424 16.3113 6.37687 13.0453 8.16335L18.8146 13.8409C19.9859 13.4344 21.2599 13.218 22.508 13.218C23.953 13.218 25.321 13.4316 26.5866 13.8409L28.1691 14.5441L29.7431 15.2473L30.5097 15.6046L31.334 16.0321L31.9547 16.3683L32.6107 16.7371L33.3283 17.1408L34.0034 17.5147L34.0034 13.3769C31.5434 10.963 27.9944 9.37424 24.0044 9.37424Z" fill="#EB4335"/>
-                    <path d="M24.0044 46.1834C31.7483 46.1834 38.3582 42.6393 42.2289 37.1627L36.5401 31.474C33.4011 35.1017 29.0706 37.4925 24.0044 37.4925C18.667 37.4925 14.0042 34.6976 11.0453 30.6409L5.35659 36.3297C9.35659 41.5273 16.1425 46.1834 24.0044 46.1834Z" fill="#34A853"/>
-                    <path d="M12.6074 30.292L7.00971 36.0234C4.1942 32.7441 2.58334 28.4067 2.58334 23.7624L7.00971 18.0289L12.6074 12.3364C11.0829 14.114 10.1654 16.3344 10.1654 18.4328L10.1654 23.7624C10.1654 26.294 11.0829 28.5144 12.6074 30.292Z" fill="#4285F4"/>
-                    </g>
-                    <defs>
-                    <clipPath id="clip0_1_7">
-                    <rect width="48" height="48" fill="white"/>
-                    </clipPath>
-                    </defs>
+<body class="transition-colors duration-300">
+    <div class="container-app min-h-screen">
+        <div class="flex justify-between items-center w-full max-w-2xl mb-8">
+            <h1 class="text-4xl md:text-5xl font-bold">Your Bookmarks</h1>
+            <button id="theme-toggle" class="p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors">
+                <svg id="moon-icon" class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
                 </svg>
-                Sign In with Google
+                <svg id="sun-icon" class="w-6 h-6 hidden" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
+                </svg>
             </button>
-            <p id="user-id-display" class="hidden text-sm text-gray-400 break-all p-4 rounded-lg bg-gray-50"></p>
         </div>
 
-        <!-- Shared Bookmark Section -->
-        <div id="shared-bookmark-section" class="w-full card hidden mb-8">
-            <h2 class="text-2xl font-semibold mb-4 text-center">Shared Bookmark</h2>
-            <div id="shared-content" class="text-center">
-                <a id="shared-link" href="#" target="_blank" class="text-indigo-600 hover:text-indigo-800 text-lg font-bold transition-colors"></a>
-                <p id="shared-name" class="mt-2 text-gray-600"></p>
+        <!-- Shared Link View -->
+        <div id="shared-view" class="app-card w-full max-w-2xl text-center hidden">
+            <h2 class="text-2xl font-bold mb-4">Shared Bookmark</h2>
+            <div id="shared-content">
+                <a id="shared-link" href="#" target="_blank" class="text-xl font-semibold text-blue-500 hover:underline"></a>
+                <p id="shared-name" class="mt-2 text-gray-500"></p>
             </div>
-            <p id="shared-error" class="text-red-500 text-center mt-4 hidden"></p>
+            <p id="shared-error" class="text-red-500 mt-4 font-medium hidden">Bookmark not found.</p>
         </div>
 
-        <!-- Main App Section (visible after login) -->
-        <div id="app-section" class="w-full flex flex-col items-center hidden mt-8 space-y-8">
-            
+        <!-- Main App Content -->
+        <div id="main-app" class="w-full max-w-2xl space-y-8 hidden">
             <!-- Add Bookmark Form -->
-            <div class="card w-full">
-                <h2 class="text-2xl font-semibold mb-4 text-center">Add a New Bookmark</h2>
-                <form id="add-bookmark-form" class="space-y-4">
-                    <div>
-                        <input type="text" id="bookmark-name" class="input-field" placeholder="Display Name (e.g., Google)" required>
-                    </div>
-                    <div>
-                        <input type="url" id="bookmark-url" class="input-field" placeholder="URL (e.g., https://www.google.com)" required>
-                    </div>
-                    <button type="submit" class="btn btn-primary w-full">
-                        Add Bookmark
-                    </button>
+            <div class="app-card">
+                <h2 class="text-2xl font-semibold mb-4 text-center">Add a New Link</h2>
+                <form id="add-form" class="space-y-4">
+                    <input type="text" id="add-name" class="input-base" placeholder="Site Name (e.g., Google)" required>
+                    <input type="url" id="add-url" class="input-base" placeholder="URL (e.g., https://www.google.com)" required>
+                    <button type="submit" class="btn-base btn-primary w-full">Save Bookmark</button>
                 </form>
             </div>
 
-            <!-- Bookmarks List -->
-            <div class="card w-full">
-                <h2 class="text-2xl font-semibold mb-4 text-center">My Bookmarks</h2>
-                <ul id="bookmarks-list" class="space-y-4">
-                    <!-- Bookmarks will be dynamically inserted here -->
-                </ul>
-            </div>
-            
-        </div>
-        
-        <!-- Share Link Modal -->
-        <div id="share-modal" class="modal">
-            <div class="card w-full max-w-lg space-y-6">
-                <h2 class="text-2xl font-semibold text-center">Share this Bookmark</h2>
-                <div class="bg-gray-100 p-4 rounded-xl flex items-center justify-between shadow-inner">
-                    <input type="text" id="share-url-input" readonly class="bg-transparent w-full break-all text-sm md:text-base pr-2 focus:outline-none">
-                    <button id="copy-btn" class="btn btn-secondary flex-shrink-0">
-                        Copy
-                    </button>
+            <!-- Bookmarks List & Controls -->
+            <div class="app-card">
+                <h2 class="text-2xl font-semibold mb-4 text-center">My Links</h2>
+                <div class="flex flex-col md:flex-row items-center justify-between mb-4 space-y-4 md:space-y-0 md:space-x-4">
+                    <input type="text" id="search-input" class="input-base flex-1" placeholder="Search bookmarks...">
+                    <div class="flex items-center space-x-2">
+                        <label for="sort-select" class="text-sm text-gray-500 dark:text-gray-400">Sort by:</label>
+                        <select id="sort-select" class="input-base text-sm">
+                            <option value="createdAt-desc">Newest</option>
+                            <option value="createdAt-asc">Oldest</option>
+                            <option value="name-asc">Name (A-Z)</option>
+                            <option value="name-desc">Name (Z-A)</option>
+                        </select>
+                    </div>
                 </div>
-                <p id="copy-message" class="text-sm text-green-600 text-center hidden font-medium">Copied to clipboard!</p>
-                <button id="close-share-modal-btn" class="btn btn-primary w-full">
-                    Close
-                </button>
+
+                <div id="bookmarks-container" class="space-y-4">
+                    <div id="loading-spinner" class="flex justify-center py-8">
+                        <div class="loader"></div>
+                    </div>
+                    <ul id="bookmarks-list" class="space-y-4 hidden"></ul>
+                </div>
             </div>
         </div>
 
-        <!-- Preview Modal -->
-        <div id="preview-modal" class="modal p-0">
-            <div class="modal-content md:rounded-2xl md:max-w-4xl md:h-5/6">
-                <div class="relative w-full h-full">
-                    <button id="close-preview-modal-btn" class="absolute top-4 right-4 z-50 bg-white p-2 rounded-full shadow-lg hover:bg-gray-200 transition-colors">
-                        <svg class="h-6 w-6 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <!-- Toast Notifications -->
+        <div id="toast-container" class="fixed bottom-4 right-4 z-50 space-y-2"></div>
+
+        <!-- Modals -->
+        <div id="edit-modal" class="modal-overlay">
+            <div class="modal-content">
+                <h2 class="text-xl font-semibold mb-4 text-center">Edit Bookmark</h2>
+                <form id="edit-form" class="space-y-4">
+                    <input type="hidden" id="edit-id">
+                    <input type="text" id="edit-name" class="input-base" placeholder="Name" required>
+                    <input type="url" id="edit-url" class="input-base" placeholder="URL" required>
+                    <div class="flex justify-end space-x-2">
+                        <button type="button" id="cancel-edit" class="btn-base btn-secondary">Cancel</button>
+                        <button type="submit" class="btn-base btn-primary">Save Changes</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <div id="share-modal" class="modal-overlay">
+            <div class="modal-content">
+                <h2 class="text-xl font-semibold mb-4 text-center">Share Link</h2>
+                <div class="relative">
+                    <input type="text" id="share-url" class="input-base pr-12 text-sm text-gray-500" readonly>
+                    <button id="copy-btn" class="absolute right-2 top-1/2 -translate-y-1/2 p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700">
+                        <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                        </svg>
+                    </button>
+                </div>
+                <div class="flex justify-center mt-4">
+                    <button id="close-share" class="btn-base btn-secondary">Done</button>
+                </div>
+            </div>
+        </div>
+
+        <div id="preview-modal" class="modal-overlay">
+            <div class="modal-content">
+                <div class="flex justify-end p-4">
+                    <button id="close-preview" class="btn-icon">
+                        <svg class="w-6 h-6 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
                         </svg>
                     </button>
-                    <iframe id="preview-iframe" class="w-full h-full border-none" sandbox="allow-scripts allow-forms allow-same-origin allow-popups"></iframe>
-                    <div id="preview-message" class="absolute inset-0 bg-white flex flex-col items-center justify-center p-8 text-center hidden">
-                        <p class="text-lg font-semibold text-gray-700">Page cannot be displayed</p>
-                        <p class="text-sm text-gray-500 mt-2">This website may be blocking itself from being embedded for security reasons.</p>
-                    </div>
                 </div>
+                <iframe id="preview-iframe" class="flex-grow w-full border-none" sandbox="allow-scripts allow-forms allow-same-origin allow-popups"></iframe>
             </div>
         </div>
-
     </div>
 
     <!-- Firebase SDKs -->
     <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/12.3.0/firebase-app.js";
-        import { getAuth, GoogleAuthProvider, signInWithPopup, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.3.0/firebase-auth.js";
-        import { getFirestore, collection, addDoc, onSnapshot, doc, deleteDoc, getDoc } from "https://www.gstatic.com/firebasejs/12.3.0/firebase-firestore.js";
-        
-        // Your hardcoded Firebase configuration
-        const firebaseConfig = {
-            apiKey: "AIzaSyB9DTr45XqQ5BwnpmID9lMA0-XsRvFMN1U",
-            authDomain: "bookmarkpro-56e3e.firebaseapp.com",
-            projectId: "bookmarkpro-56e3e",
-            storageBucket: "bookmarkpro-56e3e.firebasestorage.app",
-            messagingSenderId: "408975755939",
-            appId: "1:408975755939:web:0abd1f2603ae6d45fb0d16",
-            measurementId: "G-K63WZML0TE"
-        };
-        
-        let db, auth;
-        let userId = null;
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInWithCustomToken, signInAnonymously } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, doc, collection, onSnapshot, addDoc, updateDoc, deleteDoc, getDoc, getDocs, setLogLevel } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // Firebase-specific global variables
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {};
+        const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
+
+        let db;
+        let auth;
+        let userId;
         let unsubscribeBookmarks = null;
-        
-        // UI elements
-        const loadingSpinner = document.getElementById('loading-spinner');
-        const loadingMessage = document.getElementById('loading-message');
-        const googleSignInBtn = document.getElementById('google-sign-in-btn');
-        const userIdDisplay = document.getElementById('user-id-display');
-        const appSection = document.getElementById('app-section');
-        const authSection = document.getElementById('auth-section');
-        const addBookmarkForm = document.getElementById('add-bookmark-form');
-        const bookmarkNameInput = document.getElementById('bookmark-name');
-        const bookmarkUrlInput = document.getElementById('bookmark-url');
+        let bookmarksCache = [];
+
+        // UI Elements
+        const mainApp = document.getElementById('main-app');
+        const sharedView = document.getElementById('shared-view');
         const bookmarksList = document.getElementById('bookmarks-list');
-        const sharedBookmarkSection = document.getElementById('shared-bookmark-section');
-        const sharedLink = document.getElementById('shared-link');
-        const sharedName = document.getElementById('shared-name');
-        const sharedError = document.getElementById('shared-error');
+        const loadingSpinner = document.getElementById('loading-spinner');
+        const searchInput = document.getElementById('search-input');
+        const sortSelect = document.getElementById('sort-select');
+        const addForm = document.getElementById('add-form');
+        const addName = document.getElementById('add-name');
+        const addUrl = document.getElementById('add-url');
+        const themeToggle = document.getElementById('theme-toggle');
+        const sunIcon = document.getElementById('sun-icon');
+        const moonIcon = document.getElementById('moon-icon');
+
+        // Modal Elements
+        const editModal = document.getElementById('edit-modal');
+        const editForm = document.getElementById('edit-form');
+        const editId = document.getElementById('edit-id');
+        const editName = document.getElementById('edit-name');
+        const editUrl = document.getElementById('edit-url');
+        const cancelEditBtn = document.getElementById('cancel-edit');
         const shareModal = document.getElementById('share-modal');
-        const shareUrlInput = document.getElementById('share-url-input');
+        const shareUrlInput = document.getElementById('share-url');
         const copyBtn = document.getElementById('copy-btn');
-        const closeModalBtn = document.getElementById('close-share-modal-btn');
-        const copyMessage = document.getElementById('copy-message');
+        const closeShareBtn = document.getElementById('close-share');
         const previewModal = document.getElementById('preview-modal');
         const previewIframe = document.getElementById('preview-iframe');
-        const closePreviewModalBtn = document.getElementById('close-preview-modal-btn');
-        const previewMessage = document.getElementById('preview-message');
+        const closePreviewBtn = document.getElementById('close-preview');
 
-        // Initial setup
-        const init = async () => {
+        // Toast functionality
+        const showToast = (message, type = 'success') => {
+            const toastContainer = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+            toast.className = `p-4 rounded-xl shadow-lg font-semibold text-white ${type === 'success' ? 'bg-green-500' : 'bg-red-500'} transition-all duration-300 transform translate-y-4 opacity-0`;
+            toast.textContent = message;
+            toastContainer.appendChild(toast);
+            
+            setTimeout(() => {
+                toast.classList.remove('translate-y-4', 'opacity-0');
+            }, 10);
+
+            setTimeout(() => {
+                toast.classList.add('translate-y-4', 'opacity-0');
+                toast.addEventListener('transitionend', () => toast.remove());
+            }, 3000);
+        };
+
+        // Dark/Light mode toggle
+        const toggleTheme = () => {
+            const currentTheme = document.documentElement.getAttribute('data-theme');
+            const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+            document.documentElement.setAttribute('data-theme', newTheme);
+            localStorage.setItem('theme', newTheme);
+            sunIcon.classList.toggle('hidden', newTheme !== 'dark');
+            moonIcon.classList.toggle('hidden', newTheme !== 'light');
+        };
+
+        const applySavedTheme = () => {
+            const savedTheme = localStorage.getItem('theme') || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+            document.documentElement.setAttribute('data-theme', savedTheme);
+            sunIcon.classList.toggle('hidden', savedTheme !== 'dark');
+            moonIcon.classList.toggle('hidden', savedTheme !== 'light');
+        };
+
+        // Firebase Initialization
+        const initFirebase = async () => {
             try {
                 const app = initializeApp(firebaseConfig);
-                db = getFirestore(app);
                 auth = getAuth(app);
+                db = getFirestore(app);
+                setLogLevel('debug');
+
+                if (initialAuthToken) {
+                    await signInWithCustomToken(auth, initialAuthToken);
+                } else {
+                    await signInAnonymously(auth);
+                }
+
+                userId = auth.currentUser?.uid || crypto.randomUUID();
                 
-                onAuthStateChanged(auth, async (user) => {
-                    loadingSpinner.classList.add('hidden');
-                    loadingMessage.classList.add('hidden');
-                    
-                    if (user) {
-                        userId = user.uid;
-                        userIdDisplay.textContent = `User ID: ${userId}`;
-                        userIdDisplay.classList.remove('hidden');
-                        authSection.classList.add('hidden');
-                        appSection.classList.remove('hidden');
-                        sharedBookmarkSection.classList.add('hidden');
-                        if (unsubscribeBookmarks) unsubscribeBookmarks();
-                        setupRealtimeListener();
-                    } else {
-                        userId = null;
-                        userIdDisplay.classList.add('hidden');
-                        appSection.classList.add('hidden');
-                        authSection.classList.remove('hidden');
-                        googleSignInBtn.classList.remove('hidden');
-                        bookmarksList.innerHTML = '';
-                    }
-                    await handleSharedLink();
-                });
+                await handleInitialRoute();
 
             } catch (error) {
-                console.error("Firebase initialization or auth error:", error);
-                loadingMessage.textContent = "Error: Failed to initialize the app.";
-                loadingMessage.classList.remove('hidden');
+                console.error("Firebase init failed:", error);
+                showToast("Failed to connect to the database.", 'error');
             }
         };
-        
-        // Handle sign-in with Google
-        googleSignInBtn.addEventListener('click', async () => {
-            try {
-                const provider = new GoogleAuthProvider();
-                await signInWithPopup(auth, provider);
-            } catch (error) {
-                console.error("Google sign-in failed:", error);
+
+        // Handle URL hash for shared links
+        const handleInitialRoute = async () => {
+            const hash = window.location.hash;
+            const params = new URLSearchParams(window.location.search);
+            const sharedId = params.get('shareId');
+
+            if (sharedId) {
+                mainApp.classList.add('hidden');
+                sharedView.classList.remove('hidden');
+                await fetchSharedBookmark(sharedId);
+            } else {
+                mainApp.classList.remove('hidden');
+                sharedView.classList.add('hidden');
+                setupRealtimeListener();
             }
-        });
+        };
 
-        // Setup real-time listener for bookmarks
-        const setupRealtimeListener = () => {
-            if (!db || !userId) return;
+        const fetchSharedBookmark = async (id) => {
+            const sharedLink = document.getElementById('shared-link');
+            const sharedName = document.getElementById('shared-name');
+            const sharedError = document.getElementById('shared-error');
+            
+            sharedLink.textContent = '';
+            sharedName.textContent = '';
+            sharedError.classList.add('hidden');
 
-            const bookmarksColRef = collection(db, `bookmarks`);
-            unsubscribeBookmarks = onSnapshot(bookmarksColRef, (snapshot) => {
-                const bookmarks = [];
-                snapshot.forEach(doc => {
-                    const data = doc.data();
-                    bookmarks.push({ id: doc.id, ...data });
+            try {
+                const sharedDocRef = doc(db, `artifacts/${appId}/public/data/shared_bookmarks`, id);
+                const docSnap = await getDoc(sharedDocRef);
+
+                if (docSnap.exists()) {
+                    const data = docSnap.data();
+                    sharedLink.href = data.url;
+                    sharedLink.textContent = data.name;
+                    sharedName.textContent = data.url;
+                } else {
+                    sharedError.classList.remove('hidden');
+                }
+            } catch (error) {
+                console.error("Error fetching shared bookmark:", error);
+                sharedError.classList.remove('hidden');
+            }
+        };
+
+        // CRUD Operations
+        const addBookmark = async (name, url) => {
+            try {
+                const bookmarksColRef = collection(db, `artifacts/${appId}/users/${userId}/bookmarks`);
+                await addDoc(bookmarksColRef, {
+                    name,
+                    url,
+                    createdAt: new Date().toISOString()
                 });
-                renderBookmarks(bookmarks);
+                showToast("Bookmark saved successfully!");
+                addForm.reset();
+            } catch (error) {
+                console.error("Error adding bookmark:", error);
+                showToast("Failed to save bookmark.", 'error');
+            }
+        };
+
+        const updateBookmark = async (id, name, url) => {
+            try {
+                const docRef = doc(db, `artifacts/${appId}/users/${userId}/bookmarks`, id);
+                await updateDoc(docRef, { name, url });
+                showToast("Bookmark updated!");
+                hideModal(editModal);
+            } catch (error) {
+                console.error("Error updating bookmark:", error);
+                showToast("Failed to update bookmark.", 'error');
+            }
+        };
+
+        const deleteBookmark = async (id) => {
+            try {
+                const docRef = doc(db, `artifacts/${appId}/users/${userId}/bookmarks`, id);
+                await deleteDoc(docRef);
+                showToast("Bookmark deleted!");
+            } catch (error) {
+                console.error("Error deleting bookmark:", error);
+                showToast("Failed to delete bookmark.", 'error');
+            }
+        };
+
+        const shareBookmark = async (bookmark) => {
+            try {
+                const sharedDocRef = await addDoc(collection(db, `artifacts/${appId}/public/data/shared_bookmarks`), {
+                    name: bookmark.name,
+                    url: bookmark.url,
+                    createdAt: bookmark.createdAt,
+                });
+                const shareUrl = `${window.location.origin}${window.location.pathname}?shareId=${sharedDocRef.id}`;
+                shareUrlInput.value = shareUrl;
+                showModal(shareModal);
+            } catch (error) {
+                console.error("Error creating shared link:", error);
+                showToast("Failed to create shared link.", 'error');
+            }
+        };
+
+        // Real-time listener
+        const setupRealtimeListener = () => {
+            if (unsubscribeBookmarks) unsubscribeBookmarks();
+            loadingSpinner.classList.remove('hidden');
+            bookmarksList.classList.add('hidden');
+
+            const bookmarksColRef = collection(db, `artifacts/${appId}/users/${userId}/bookmarks`);
+            unsubscribeBookmarks = onSnapshot(bookmarksColRef, (snapshot) => {
+                bookmarksCache = [];
+                snapshot.forEach(doc => {
+                    bookmarksCache.push({ id: doc.id, ...doc.data() });
+                });
+                filterAndSortBookmarks();
+                loadingSpinner.classList.add('hidden');
+                bookmarksList.classList.remove('hidden');
             }, (error) => {
                 console.error("Error fetching bookmarks:", error);
-                bookmarksList.innerHTML = '<p class="text-center text-red-500">Error loading bookmarks.</p>';
+                showToast("Failed to load bookmarks.", 'error');
+                loadingSpinner.classList.add('hidden');
+                bookmarksList.classList.remove('hidden');
             });
         };
 
-        // Render bookmarks to the UI
+        // Filtering and Sorting
+        const filterAndSortBookmarks = () => {
+            const searchTerm = searchInput.value.toLowerCase();
+            const sortOption = sortSelect.value;
+            const [sortBy, sortDirection] = sortOption.split('-');
+
+            let filteredBookmarks = bookmarksCache.filter(b => 
+                b.name.toLowerCase().includes(searchTerm) || b.url.toLowerCase().includes(searchTerm)
+            );
+
+            filteredBookmarks.sort((a, b) => {
+                if (sortBy === 'createdAt') {
+                    const dateA = new Date(a.createdAt);
+                    const dateB = new Date(b.createdAt);
+                    return sortDirection === 'asc' ? dateA - dateB : dateB - dateA;
+                } else if (sortBy === 'name') {
+                    const nameA = a.name.toLowerCase();
+                    const nameB = b.name.toLowerCase();
+                    if (nameA < nameB) return sortDirection === 'asc' ? -1 : 1;
+                    if (nameA > nameB) return sortDirection === 'asc' ? 1 : -1;
+                    return 0;
+                }
+            });
+
+            renderBookmarks(filteredBookmarks);
+        };
+
+        // Rendering
         const renderBookmarks = (bookmarks) => {
             bookmarksList.innerHTML = '';
             if (bookmarks.length === 0) {
-                bookmarksList.innerHTML = '<p class="text-center text-gray-500">No bookmarks added yet.</p>';
+                bookmarksList.innerHTML = `<li class="text-center text-gray-500 py-8">No bookmarks found.</li>`;
                 return;
             }
 
             bookmarks.forEach(bookmark => {
                 const li = document.createElement('li');
-                li.className = 'flex items-center justify-between p-4 bg-gray-50 rounded-xl shadow-sm border border-gray-100';
+                li.className = 'flex flex-col md:flex-row items-start md:items-center justify-between p-4 bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 transition-colors duration-300';
                 li.innerHTML = `
-                    <div class="flex-1 min-w-0 pr-4">
-                        <a href="${bookmark.url}" target="_blank" class="block text-lg font-semibold text-indigo-600 hover:text-indigo-800 transition-colors truncate">${bookmark.name}</a>
+                    <div class="flex-1 min-w-0 pr-4 mb-2 md:mb-0">
+                        <a href="${bookmark.url}" target="_blank" class="block text-lg font-semibold text-blue-500 hover:underline truncate">${bookmark.name}</a>
                         <p class="text-sm text-gray-500 truncate mt-1">${bookmark.url}</p>
                     </div>
-                    <div class="dropdown relative">
-                        <button class="dropdown-toggle p-2 rounded-full hover:bg-gray-200">
-                            <!-- Vertical Ellipsis SVG Icon -->
-                            <svg class="w-6 h-6 text-gray-500" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
-                                <path d="M10 12a2 2 0 100-4 2 2 0 000 4zM10 2a2 2 0 100 4 2 2 0 000-4zM10 18a2 2 0 100-4 2 2 0 000 4z"></path>
-                            </svg>
+                    <div class="flex items-center space-x-2">
+                        <!-- Preview Button -->
+                        <button class="btn-icon preview-btn" data-url="${bookmark.url}">
+                            <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>
                         </button>
-                        <div class="dropdown-menu">
-                            <button data-url="${bookmark.url}" class="dropdown-item preview-btn">
-                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path stroke-linecap="round" stroke-linejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>
-                                <span>Preview Page</span>
-                            </button>
-                            <button data-id="${bookmark.id}" class="dropdown-item share-btn">
-                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 11-2.684 2.684 10a3 3 0 112.684-2.684zm0 2.684c1.658 0 3-1.342 3-3m-13.916 7.632C4.168 19.462 5.239 20 6.5 20c1.393 0 2.656-.475 3.666-1.258m-2.666 1.258V20a2 2 0 01-2-2m2-2.585a3 3 0 01-2.684-2.684m0 0a3 3 0 010-2.684m0 0a3 3 0 01-2.684 2.684m0 0a3 3 0 012.684-2.684M7.416 19.916c.168.04.34.064.514.084m-.084 0a3 3 0 01-2.684-2.684M9.5 12c0-1.658 1.342-3 3-3s3 1.342 3 3-1.342 3-3 3-3-1.342-3-3z" /></svg>
-                                <span>Share</span>
-                            </button>
-                            <button data-id="${bookmark.id}" class="dropdown-item delete-btn">
-                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
-                                <span>Delete</span>
-                            </button>
-                        </div>
+                        <!-- Edit Button -->
+                        <button class="btn-icon edit-btn" data-id="${bookmark.id}" data-name="${bookmark.name}" data-url="${bookmark.url}">
+                            <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" /></svg>
+                        </button>
+                        <!-- Share Button -->
+                        <button class="btn-icon share-btn" data-id="${bookmark.id}">
+                            <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684c1.658 0 3-1.342 3-3m-13.916 7.632c-.174.04-.347.067-.521.082m.521-.082A8.96 8.96 0 014 20c-1.464 0-2.859-.447-4-1.228m1.228 0a1.5 1.5 0 00-.73-2.083m0 0a1.5 1.5 0 01-.73-2.083m0 0a1.5 1.5 0 00-.73-2.083m0 0a1.5 1.5 0 01-.73-2.083M12 9a3 3 0 100 6 3 3 0 000-6z" /></svg>
+                        </button>
+                        <!-- Delete Button -->
+                        <button class="btn-icon delete-btn" data-id="${bookmark.id}">
+                            <svg class="w-5 h-5 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                        </button>
                     </div>
                 `;
                 bookmarksList.appendChild(li);
@@ -344,222 +562,88 @@
             attachEventListeners();
         };
 
-        // Attach event listeners for dynamic buttons
-        const attachEventListeners = () => {
-            // Close all dropdowns when clicking anywhere on the document
-            document.addEventListener('click', (e) => {
-                document.querySelectorAll('.dropdown-menu.active').forEach(menu => {
-                    // Check if the click was outside the dropdown menu and its toggle button
-                    if (!menu.parentElement.contains(e.target)) {
-                        menu.classList.remove('active');
-                    }
-                });
-            });
+        // Modal functions
+        const showModal = (modal) => modal.classList.add('active');
+        const hideModal = (modal) => modal.classList.remove('active');
 
-            document.querySelectorAll('.dropdown-toggle').forEach(button => {
-                button.addEventListener('click', (e) => {
-                    e.stopPropagation(); // Prevent the document click listener from immediately closing the menu
-                    const menu = button.nextElementSibling;
-                    const isActive = menu.classList.contains('active');
-                    
-                    // Close any other open menus
-                    document.querySelectorAll('.dropdown-menu.active').forEach(openMenu => {
-                        if (openMenu !== menu) {
-                            openMenu.classList.remove('active');
-                        }
-                    });
-
-                    // Toggle the current menu's active state
-                    if (!isActive) {
-                        menu.classList.add('active');
-                    } else {
-                        menu.classList.remove('active');
-                    }
-                });
-            });
-
-            document.querySelectorAll('.delete-btn').forEach(button => {
-                button.addEventListener('click', handleDelete);
-            });
-            document.querySelectorAll('.share-btn').forEach(button => {
-                button.addEventListener('click', handleShare);
-            });
-            document.querySelectorAll('.preview-btn').forEach(button => {
-                button.addEventListener('click', handlePreview);
-            });
-        };
-
-        // Handle form submission to add a new bookmark
-        addBookmarkForm.addEventListener('submit', async (e) => {
+        // Event Handlers
+        const handleAddFormSubmit = (e) => {
             e.preventDefault();
-            const name = bookmarkNameInput.value.trim();
-            const url = bookmarkUrlInput.value.trim();
-
-            if (!name || !url) return;
-
-            try {
-                const bookmarksColRef = collection(db, `bookmarks`);
-                await addDoc(bookmarksColRef, {
-                    name,
-                    url,
-                    createdAt: new Date().toISOString()
-                });
-                bookmarkNameInput.value = '';
-                bookmarkUrlInput.value = '';
-            } catch (error) {
-                console.error("Error adding bookmark:", error);
-            }
-        });
-
-        // Handle bookmark deletion
-        const handleDelete = async (e) => {
-            e.stopPropagation();
-            const bookmarkId = e.target.getAttribute('data-id');
-            if (!bookmarkId) return;
-
-            try {
-                const bookmarkDocRef = doc(db, `bookmarks/${bookmarkId}`);
-                await deleteDoc(bookmarkDocRef);
-            } catch (error) {
-                console.error("Error deleting bookmark:", error);
-            }
+            addBookmark(addName.value, addUrl.value);
         };
 
-        // Handle bookmark sharing
-        const handleShare = async (e) => {
-            e.stopPropagation();
-            const bookmarkId = e.target.getAttribute('data-id');
-            if (!bookmarkId) return;
-
-            try {
-                const bookmarkDocRef = doc(db, `bookmarks/${bookmarkId}`);
-                const bookmarkSnap = await getDoc(bookmarkDocRef);
-                
-                if (bookmarkSnap.exists()) {
-                    const bookmarkData = bookmarkSnap.data();
-                    
-                    const sharedCollectionRef = collection(db, `shared_bookmarks`);
-                    const newSharedDocRef = await addDoc(sharedCollectionRef, bookmarkData);
-                    
-                    // Create the shareable URL
-                    const shareUrl = `${window.location.origin}${window.location.pathname}#shared/${newSharedDocRef.id}`;
-                    
-                    showShareModal(shareUrl);
-                } else {
-                    console.error("Bookmark not found for sharing.");
-                }
-            } catch (error) {
-                console.error("Error sharing bookmark:", error);
-            }
+        const handleEditFormSubmit = (e) => {
+            e.preventDefault();
+            updateBookmark(editId.value, editName.value, editUrl.value);
         };
-        
-        // Handle previewing the bookmark
+
+        const attachEventListeners = () => {
+            // Remove previous listeners to prevent duplicates
+            bookmarksList.querySelectorAll('.preview-btn').forEach(btn => btn.removeEventListener('click', handlePreview));
+            bookmarksList.querySelectorAll('.edit-btn').forEach(btn => btn.removeEventListener('click', handleEdit));
+            bookmarksList.querySelectorAll('.share-btn').forEach(btn => btn.removeEventListener('click', handleShare));
+            bookmarksList.querySelectorAll('.delete-btn').forEach(btn => btn.removeEventListener('click', handleDelete));
+
+            // Add new listeners
+            bookmarksList.querySelectorAll('.preview-btn').forEach(btn => btn.addEventListener('click', handlePreview));
+            bookmarksList.querySelectorAll('.edit-btn').forEach(btn => btn.addEventListener('click', handleEdit));
+            bookmarksList.querySelectorAll('.share-btn').forEach(btn => btn.addEventListener('click', handleShare));
+            bookmarksList.querySelectorAll('.delete-btn').forEach(btn => btn.addEventListener('click', handleDelete));
+        };
+
         const handlePreview = (e) => {
-            e.stopPropagation();
-            const url = e.target.getAttribute('data-url');
-            if (!url) return;
-
-            // Reset preview modal state
-            previewIframe.src = 'about:blank'; // Clear iframe content
-            previewMessage.classList.add('hidden');
-
-            previewModal.classList.add('active');
-            
-            // Set the iframe source and handle potential loading issues
+            const url = e.currentTarget.dataset.url;
             previewIframe.src = url;
-            previewIframe.onload = () => {
-                // If the onload event fires, the page has loaded successfully
-                previewMessage.classList.add('hidden');
-            };
-            previewIframe.onerror = () => {
-                // If there's an error loading the page, show a message
-                previewMessage.classList.remove('hidden');
-            };
+            showModal(previewModal);
         };
 
-        // Show the share modal
-        const showShareModal = (url) => {
-            shareUrlInput.value = url;
-            copyMessage.classList.add('hidden'); // Reset copy message
-            shareModal.classList.add('active');
+        const handleEdit = (e) => {
+            const { id, name, url } = e.currentTarget.dataset;
+            editId.value = id;
+            editName.value = name;
+            editUrl.value = url;
+            showModal(editModal);
         };
 
-        // Handle copy button click
-        copyBtn.addEventListener('click', () => {
-            shareUrlInput.select();
-            shareUrlInput.setSelectionRange(0, 99999); // For mobile devices
-            try {
-                document.execCommand('copy');
-                copyMessage.classList.remove('hidden');
-                setTimeout(() => copyMessage.classList.add('hidden'), 2000);
-            } catch (err) {
-                console.error('Failed to copy text: ', err);
-            }
-        });
-
-        // Close the share modal
-        closeModalBtn.addEventListener('click', () => {
-            shareModal.classList.remove('active');
-        });
-
-        // Close the preview modal
-        closePreviewModalBtn.addEventListener('click', () => {
-            previewModal.classList.remove('active');
-            previewIframe.src = 'about:blank'; // Stop loading the page
-        });
-
-        // Handle the shared link from the URL hash
-        const handleSharedLink = async () => {
-            const hash = window.location.hash;
-            if (hash.startsWith('#shared/')) {
-                const bookmarkId = hash.substring('#shared/'.length);
-                
-                loadingSpinner.classList.remove('hidden');
-                loadingMessage.textContent = "Fetching shared bookmark...";
-                loadingMessage.classList.remove('hidden');
-                sharedBookmarkSection.classList.remove('hidden');
-                appSection.classList.add('hidden');
-                authSection.classList.add('hidden');
-
-                try {
-                    const sharedBookmarkDocRef = doc(db, `shared_bookmarks/${bookmarkId}`);
-                    const bookmarkSnap = await getDoc(sharedBookmarkDocRef);
-
-                    if (bookmarkSnap.exists()) {
-                        const data = bookmarkSnap.data();
-                        sharedLink.href = data.url;
-                        sharedLink.textContent = data.name;
-                        sharedName.textContent = data.url;
-                        sharedError.classList.add('hidden');
-                        sharedBookmarkSection.classList.remove('hidden');
-                    } else {
-                        sharedLink.href = '#';
-                        sharedLink.textContent = '';
-                        sharedName.textContent = '';
-                        sharedError.textContent = 'This shared bookmark does not exist or has been deleted.';
-                        sharedError.classList.remove('hidden');
-                        sharedBookmarkSection.classList.remove('hidden');
-                    }
-                } catch (error) {
-                    console.error("Error fetching shared bookmark:", error);
-                    sharedError.textContent = 'An error occurred while fetching the bookmark.';
-                    sharedError.classList.remove('hidden');
-                } finally {
-                    loadingSpinner.classList.add('hidden');
-                    loadingMessage.classList.add('hidden');
-                }
-            } else {
-                if (auth.currentUser) {
-                    appSection.classList.remove('hidden');
-                }
-                sharedBookmarkSection.classList.add('hidden');
+        const handleShare = async (e) => {
+            const bookmarkId = e.currentTarget.dataset.id;
+            const bookmark = bookmarksCache.find(b => b.id === bookmarkId);
+            if (bookmark) {
+                await shareBookmark(bookmark);
             }
         };
 
-        // Listen for hash changes and also check on initial load
-        window.addEventListener('hashchange', handleSharedLink);
-        document.addEventListener('DOMContentLoaded', init);
+        const handleDelete = (e) => {
+            const bookmarkId = e.currentTarget.dataset.id;
+            if (confirm('Are you sure you want to delete this bookmark?')) {
+                 deleteBookmark(bookmarkId);
+            }
+        };
         
+        // General event listeners
+        addForm.addEventListener('submit', handleAddFormSubmit);
+        editForm.addEventListener('submit', handleEditFormSubmit);
+        cancelEditBtn.addEventListener('click', () => hideModal(editModal));
+        closeShareBtn.addEventListener('click', () => hideModal(shareModal));
+        copyBtn.addEventListener('click', () => {
+             shareUrlInput.select();
+             document.execCommand('copy');
+             showToast("Copied to clipboard!", 'success');
+        });
+        closePreviewBtn.addEventListener('click', () => {
+             hideModal(previewModal);
+             previewIframe.src = 'about:blank';
+        });
+        searchInput.addEventListener('input', filterAndSortBookmarks);
+        sortSelect.addEventListener('change', filterAndSortBookmarks);
+        themeToggle.addEventListener('click', toggleTheme);
+
+        // Initialization on page load
+        window.addEventListener('load', () => {
+            applySavedTheme();
+            initFirebase();
+        });
+
     </script>
 </body>
 </html>
