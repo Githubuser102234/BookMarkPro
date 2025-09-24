@@ -36,22 +36,26 @@
         .dropdown {
             position: relative;
         }
+        /* Style for the pop-up menu */
         .dropdown-menu {
-            @apply absolute right-0 top-full mt-2 w-48 bg-white border border-gray-200 rounded-xl shadow-xl py-2 z-50;
+            @apply absolute right-0 top-full mt-2 w-48 bg-white border border-gray-200 rounded-xl shadow-xl py-2 z-50 opacity-0 scale-95 transition-all duration-150 transform origin-top-right;
             display: none;
         }
         .dropdown-menu.active {
+            @apply opacity-100 scale-100;
             display: block;
         }
         .dropdown-item {
             @apply block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 w-full text-left;
         }
         .modal {
-            @apply fixed inset-0 z-50 flex items-center justify-center p-4 bg-gray-900 bg-opacity-75 backdrop-blur-sm;
-            display: none;
+            @apply fixed inset-0 z-50 flex items-center justify-center p-4 bg-gray-900 bg-opacity-75 backdrop-blur-sm transition-opacity duration-300;
+            opacity: 0;
+            visibility: hidden;
         }
         .modal.active {
-            display: flex;
+            @apply opacity-100;
+            visibility: visible;
         }
         .modal-content {
             @apply relative w-full h-full bg-white rounded-2xl overflow-hidden;
@@ -165,15 +169,19 @@
         </div>
 
         <!-- Preview Modal -->
-        <div id="preview-modal" class="modal">
-            <div class="modal-content">
-                <button id="close-preview-modal-btn" class="absolute top-4 right-4 z-50 bg-white p-2 rounded-full shadow-lg hover:bg-gray-200 transition-colors">
-                    <svg class="h-6 w-6 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-                    </svg>
-                </button>
-                <div class="iframe-container">
-                    <iframe id="preview-iframe" class="w-full h-full border-none rounded-2xl" sandbox="allow-scripts allow-forms allow-same-origin allow-popups"></iframe>
+        <div id="preview-modal" class="modal p-0">
+            <div class="modal-content md:rounded-2xl md:max-w-4xl md:h-5/6">
+                <div class="relative w-full h-full">
+                    <button id="close-preview-modal-btn" class="absolute top-4 right-4 z-50 bg-white p-2 rounded-full shadow-lg hover:bg-gray-200 transition-colors">
+                        <svg class="h-6 w-6 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                    </button>
+                    <iframe id="preview-iframe" class="w-full h-full border-none" sandbox="allow-scripts allow-forms allow-same-origin allow-popups"></iframe>
+                    <div id="preview-message" class="absolute inset-0 bg-white flex flex-col items-center justify-center p-8 text-center hidden">
+                        <p class="text-lg font-semibold text-gray-700">Page cannot be displayed</p>
+                        <p class="text-sm text-gray-500 mt-2">This website may be blocking itself from being embedded for security reasons.</p>
+                    </div>
                 </div>
             </div>
         </div>
@@ -226,6 +234,7 @@
         const previewModal = document.getElementById('preview-modal');
         const previewIframe = document.getElementById('preview-iframe');
         const closePreviewModalBtn = document.getElementById('close-preview-modal-btn');
+        const previewMessage = document.getElementById('preview-message');
 
         // Initial setup
         const init = async () => {
@@ -311,8 +320,9 @@
                     </div>
                     <div class="dropdown relative">
                         <button class="dropdown-toggle p-2 rounded-full hover:bg-gray-200">
-                            <svg class="w-6 h-6 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z" />
+                            <!-- Vertical Ellipsis SVG Icon -->
+                            <svg class="w-6 h-6 text-gray-500" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
+                                <path d="M10 12a2 2 0 100-4 2 2 0 000 4zM10 2a2 2 0 100 4 2 2 0 000-4zM10 18a2 2 0 100-4 2 2 0 000 4z"></path>
                             </svg>
                         </button>
                         <div class="dropdown-menu">
@@ -329,16 +339,34 @@
 
         // Attach event listeners for dynamic buttons
         const attachEventListeners = () => {
+            // Close all dropdowns when clicking anywhere on the document
+            document.addEventListener('click', (e) => {
+                document.querySelectorAll('.dropdown-menu.active').forEach(menu => {
+                    // Check if the click was outside the dropdown menu and its toggle button
+                    if (!menu.parentElement.contains(e.target)) {
+                        menu.classList.remove('active');
+                    }
+                });
+            });
+
             document.querySelectorAll('.dropdown-toggle').forEach(button => {
                 button.addEventListener('click', (e) => {
-                    e.stopPropagation();
+                    e.stopPropagation(); // Prevent the document click listener from immediately closing the menu
                     const menu = button.nextElementSibling;
                     const isActive = menu.classList.contains('active');
+                    
+                    // Close any other open menus
                     document.querySelectorAll('.dropdown-menu.active').forEach(openMenu => {
-                        openMenu.classList.remove('active');
+                        if (openMenu !== menu) {
+                            openMenu.classList.remove('active');
+                        }
                     });
+
+                    // Toggle the current menu's active state
                     if (!isActive) {
                         menu.classList.add('active');
+                    } else {
+                        menu.classList.remove('active');
                     }
                 });
             });
@@ -351,14 +379,6 @@
             });
             document.querySelectorAll('.preview-btn').forEach(button => {
                 button.addEventListener('click', handlePreview);
-            });
-
-            document.addEventListener('click', (e) => {
-                document.querySelectorAll('.dropdown-menu.active').forEach(menu => {
-                    if (!menu.parentElement.contains(e.target)) {
-                        menu.classList.remove('active');
-                    }
-                });
             });
         };
 
@@ -414,6 +434,7 @@
                     const sharedCollectionRef = collection(db, `shared_bookmarks`);
                     const newSharedDocRef = await addDoc(sharedCollectionRef, bookmarkData);
                     
+                    // Create the shareable URL
                     const shareUrl = `${window.location.origin}${window.location.pathname}#shared/${newSharedDocRef.id}`;
                     
                     showShareModal(shareUrl);
@@ -429,15 +450,30 @@
         const handlePreview = (e) => {
             e.stopPropagation();
             const url = e.target.getAttribute('data-url');
-            if (url) {
-                previewIframe.src = url;
-                previewModal.classList.add('active');
-            }
+            if (!url) return;
+
+            // Reset preview modal state
+            previewIframe.src = 'about:blank'; // Clear iframe content
+            previewMessage.classList.add('hidden');
+
+            previewModal.classList.add('active');
+            
+            // Set the iframe source and handle potential loading issues
+            previewIframe.src = url;
+            previewIframe.onload = () => {
+                // If the onload event fires, the page has loaded successfully
+                previewMessage.classList.add('hidden');
+            };
+            previewIframe.onerror = () => {
+                // If there's an error loading the page, show a message
+                previewMessage.classList.remove('hidden');
+            };
         };
 
         // Show the share modal
         const showShareModal = (url) => {
             shareUrlInput.value = url;
+            copyMessage.classList.add('hidden'); // Reset copy message
             shareModal.classList.add('active');
         };
 
@@ -462,7 +498,7 @@
         // Close the preview modal
         closePreviewModalBtn.addEventListener('click', () => {
             previewModal.classList.remove('active');
-            previewIframe.src = ''; // Stop loading the page
+            previewIframe.src = 'about:blank'; // Stop loading the page
         });
 
         // Handle the shared link from the URL hash
