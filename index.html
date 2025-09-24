@@ -3,148 +3,414 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Hash-based Routing Test</title>
+    <title>Bookmark Manager</title>
+    <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Inter Font -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
         body {
             font-family: 'Inter', sans-serif;
-            background-color: #f3f4f6;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            min-height: 100vh;
-            padding: 20px;
+            @apply bg-gray-100 text-gray-800;
         }
         .container {
-            background-color: white;
-            padding: 2.5rem;
-            border-radius: 1.5rem;
-            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
-            width: 100%;
-            max-width: 600px;
-            text-align: center;
+            @apply max-w-2xl mx-auto p-4 md:p-8;
         }
-        .header {
-            font-size: 2rem;
-            font-weight: 700;
-            color: #1f2937;
-            margin-bottom: 1.5rem;
+        .card {
+            @apply bg-white p-6 rounded-xl shadow-lg transition-all duration-300;
         }
-        .nav-buttons {
-            display: flex;
-            flex-direction: column;
-            gap: 1rem;
-            margin-bottom: 2rem;
+        .input-field {
+            @apply w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-colors;
         }
         .btn {
-            padding: 0.75rem 1.5rem;
-            border-radius: 0.75rem;
-            font-weight: 600;
-            color: white;
-            transition: background-color 0.2s, transform 0.1s;
-            text-decoration: none;
-            display: block;
-            text-align: center;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            @apply py-2 px-4 rounded-lg font-medium transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2;
         }
-        .btn:hover {
-            transform: translateY(-2px);
+        .btn-primary {
+            @apply bg-indigo-600 text-white hover:bg-indigo-700 focus:ring-indigo-500;
         }
-        .btn-blue {
-            background-color: #3b82f6;
-        }
-        .btn-blue:hover {
-            background-color: #2563eb;
-        }
-        .btn-green {
-            background-color: #10b981;
-        }
-        .btn-green:hover {
-            background-color: #059669;
-        }
-        .btn-purple {
-            background-color: #8b5cf6;
-        }
-        .btn-purple:hover {
-            background-color: #7c3aed;
-        }
-        .content {
-            background-color: #f9fafb;
-            padding: 1.5rem;
-            border-radius: 1rem;
-            border: 1px dashed #d1d5db;
-        }
-        .content-header {
-            font-size: 1.25rem;
-            font-weight: 600;
-            color: #4b5563;
-            margin-bottom: 0.5rem;
-        }
-        .content-body {
-            font-size: 1rem;
-            color: #6b7280;
+        .btn-secondary {
+            @apply bg-gray-200 text-gray-800 hover:bg-gray-300 focus:ring-gray-400;
         }
     </style>
 </head>
 <body>
 
-<div class="container">
-    <div class="header">Hash-based Routing Test</div>
-    
-    <div class="nav-buttons">
-        <a href="#/home" class="btn btn-blue">Go to Home</a>
-        <a href="#/profile/user/123" class="btn btn-green">Go to Profile</a>
-        <a href="#/products/electronics/laptops" class="btn btn-purple">Go to Products</a>
-    </div>
+    <div class="container min-h-screen flex flex-col items-center justify-start py-10">
 
-    <div id="content" class="content">
-        <!-- Content will be dynamically inserted here -->
-        <div class="content-header">Current Page</div>
-        <div class="content-body" id="page-content">Click a button to navigate.</div>
-    </div>
-</div>
+        <!-- Main Title -->
+        <div class="text-center mb-8">
+            <h1 class="text-4xl md:text-5xl font-bold text-indigo-700">Bookmark Manager</h1>
+            <p class="mt-2 text-lg text-gray-600">Your personal space to save and share links.</p>
+        </div>
 
-<script>
-    // A simple function to render content based on the hash
-    function renderContent() {
-        const hash = window.location.hash;
-        const contentDiv = document.getElementById('page-content');
+        <!-- Auth & Loading Section -->
+        <div id="auth-section" class="w-full card text-center space-y-4">
+            <p id="loading-message" class="text-gray-500">Loading...</p>
+            <button id="google-sign-in-btn" class="btn btn-primary w-full hidden">
+                <svg class="inline-block h-5 w-5 mr-2" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <g clip-path="url(#clip0_1_7)">
+                    <path d="M43.611 20.0833H42V20H24V28H35.0313C34.3639 32.9554 30.1444 36.6346 24.0044 36.6346C16.3188 36.6346 10.1654 30.5694 10.1654 23.0044C10.1654 15.4394 16.3188 9.37424 24.0044 9.37424C27.9944 9.37424 31.5434 10.963 34.0034 13.3769L39.6893 7.68962C35.5398 3.65913 30.0637 1.34145 24.0044 1.34145C11.6669 1.34145 1.58334 11.4249 1.58334 23.7624C1.58334 36.0999 11.6669 46.1834 24.0044 46.1834C36.3419 46.1834 46.4254 36.0999 46.4254 23.7624C46.4254 22.1867 46.223 21.011 46.0354 20.0833H43.611Z" fill="#4285F4"/>
+                    <path d="M10.1654 23.7624C10.1654 26.294 11.0829 28.5144 12.6074 30.292L7.00971 36.0234C4.1942 32.7441 2.58334 28.4067 2.58334 23.7624C2.58334 19.3512 4.09549 15.2285 6.78453 11.9754L12.5539 17.653C11.0829 19.4306 10.1654 21.651 10.1654 23.7624Z" fill="#FBBC05"/>
+                    <path d="M24.0044 9.37424C29.6946 9.37424 33.4357 11.7766 35.7946 14.1673L40.2458 9.71612C37.0048 6.74609 31.7891 5.37424 24.0044 5.37424C19.9892 5.37424 16.3113 6.37687 13.0453 8.16335L18.8146 13.8409C19.9859 13.4344 21.2599 13.218 22.508 13.218C23.953 13.218 25.321 13.4316 26.5866 13.8409L28.1691 14.5441L29.7431 15.2473L30.5097 15.6046L31.334 16.0321L31.9547 16.3683L32.6107 16.7371L33.3283 17.1408L34.0034 17.5147L34.0034 13.3769C31.5434 10.963 27.9944 9.37424 24.0044 9.37424Z" fill="#EB4335"/>
+                    <path d="M24.0044 46.1834C31.7483 46.1834 38.3582 42.6393 42.2289 37.1627L36.5401 31.474C33.4011 35.1017 29.0706 37.4925 24.0044 37.4925C18.667 37.4925 14.0042 34.6976 11.0453 30.6409L5.35659 36.3297C9.35659 41.5273 16.1425 46.1834 24.0044 46.1834Z" fill="#34A853"/>
+                    <path d="M12.6074 30.292L7.00971 36.0234C4.1942 32.7441 2.58334 28.4067 2.58334 23.7624L7.00971 18.0289L12.6074 12.3364C11.0829 14.114 10.1654 16.3344 10.1654 18.4328L10.1654 23.7624C10.1654 26.294 11.0829 28.5144 12.6074 30.292Z" fill="#4285F4"/>
+                    </g>
+                    <defs>
+                    <clipPath id="clip0_1_7">
+                    <rect width="48" height="48" fill="white"/>
+                    </clipPath>
+                    </defs>
+                </svg>
+                Sign In with Google
+            </button>
+            <p id="user-id-display" class="hidden text-sm text-gray-400 break-all"></p>
+        </div>
+
+        <!-- Shared Bookmark Section -->
+        <div id="shared-bookmark-section" class="w-full card hidden mb-8">
+            <h2 class="text-2xl font-semibold mb-4 text-center">Shared Bookmark</h2>
+            <div id="shared-content" class="text-center">
+                <a id="shared-link" href="#" target="_blank" class="text-indigo-600 hover:text-indigo-800 text-lg font-bold transition-colors"></a>
+                <p id="shared-name" class="mt-2 text-gray-600"></p>
+            </div>
+            <p id="shared-error" class="text-red-500 text-center mt-4 hidden"></p>
+        </div>
+
+        <!-- Main App Section (visible after login) -->
+        <div id="app-section" class="w-full flex flex-col items-center hidden mt-8 space-y-8">
+            
+            <!-- Add Bookmark Form -->
+            <div class="card w-full">
+                <h2 class="text-2xl font-semibold mb-4 text-center">Add a New Bookmark</h2>
+                <form id="add-bookmark-form" class="space-y-4">
+                    <div>
+                        <input type="text" id="bookmark-name" class="input-field" placeholder="Display Name (e.g., Google)" required>
+                    </div>
+                    <div>
+                        <input type="url" id="bookmark-url" class="input-field" placeholder="URL (e.g., https://www.google.com)" required>
+                    </div>
+                    <button type="submit" class="btn btn-primary w-full">
+                        Add Bookmark
+                    </button>
+                </form>
+            </div>
+
+            <!-- Bookmarks List -->
+            <div class="card w-full">
+                <h2 class="text-2xl font-semibold mb-4 text-center">My Bookmarks</h2>
+                <ul id="bookmarks-list" class="space-y-4">
+                    <!-- Bookmarks will be dynamically inserted here -->
+                </ul>
+            </div>
+            
+        </div>
         
-        let headerText = '';
-        let bodyText = '';
+        <!-- Share Link Modal -->
+        <div id="share-modal" class="fixed inset-0 bg-gray-600 bg-opacity-50 hidden flex items-center justify-center p-4">
+            <div class="card w-full max-w-lg space-y-4">
+                <h2 class="text-2xl font-semibold text-center">Share this Bookmark</h2>
+                <div class="bg-gray-100 p-4 rounded-lg flex items-center justify-between">
+                    <input type="text" id="share-url-input" readonly class="bg-transparent w-full break-all text-sm md:text-base pr-2 focus:outline-none">
+                    <button id="copy-btn" class="btn btn-secondary flex-shrink-0">
+                        Copy
+                    </button>
+                </div>
+                <button id="close-modal-btn" class="btn btn-primary w-full">
+                    Close
+                </button>
+                <p id="copy-message" class="text-sm text-green-600 text-center hidden">Copied to clipboard!</p>
+            </div>
+        </div>
 
-        switch (hash) {
-            case '#/home':
-                headerText = 'Home Page';
-                bodyText = 'Welcome to the home page! This is the default route.';
-                break;
-            case '#/profile/user/123':
-                headerText = 'User Profile';
-                bodyText = 'Viewing the profile for user ID 123. The URL path is: ' + hash;
-                break;
-            case '#/products/electronics/laptops':
-                headerText = 'Product Category';
-                bodyText = 'You are browsing laptops in the electronics category. The URL path is: ' + hash;
-                break;
-            default:
-                headerText = '404 - Page Not Found';
-                bodyText = 'The requested hash route was not recognized. Please click one of the buttons above.';
-                break;
-        }
+    </div>
 
-        contentDiv.innerHTML = `
-            <div class="content-header">${headerText}</div>
-            <div class="content-body">${bodyText}</div>
-        `;
-    }
+    <!-- Firebase SDKs -->
+    <script type="module">
+        // Set Firebase debug logging level
+        // import { setLogLevel } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        // setLogLevel('debug');
 
-    // Call renderContent on initial load
-    renderContent();
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged, signInWithCustomToken, signInAnonymously } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, collection, addDoc, onSnapshot, doc, deleteDoc, getDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-    // Listen for hash changes and re-render the content
-    window.addEventListener('hashchange', renderContent);
-</script>
+        // Global variables provided by the Canvas environment
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : null;
+        const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
 
+        let db, auth, userId = null;
+        let isAuthReady = false;
+
+        // UI elements
+        const loadingMessage = document.getElementById('loading-message');
+        const googleSignInBtn = document.getElementById('google-sign-in-btn');
+        const userIdDisplay = document.getElementById('user-id-display');
+        const appSection = document.getElementById('app-section');
+        const authSection = document.getElementById('auth-section');
+        const addBookmarkForm = document.getElementById('add-bookmark-form');
+        const bookmarkNameInput = document.getElementById('bookmark-name');
+        const bookmarkUrlInput = document.getElementById('bookmark-url');
+        const bookmarksList = document.getElementById('bookmarks-list');
+        const sharedBookmarkSection = document.getElementById('shared-bookmark-section');
+        const sharedLink = document.getElementById('shared-link');
+        const sharedName = document.getElementById('shared-name');
+        const sharedError = document.getElementById('shared-error');
+        const shareModal = document.getElementById('share-modal');
+        const shareUrlInput = document.getElementById('share-url-input');
+        const copyBtn = document.getElementById('copy-btn');
+        const closeModalBtn = document.getElementById('close-modal-btn');
+        const copyMessage = document.getElementById('copy-message');
+
+        // Initial setup
+        const init = async () => {
+            if (!firebaseConfig) {
+                console.error("Firebase config is not available.");
+                loadingMessage.textContent = "Error: Firebase configuration is missing.";
+                return;
+            }
+
+            try {
+                const app = initializeApp(firebaseConfig);
+                db = getFirestore(app);
+                auth = getAuth(app);
+
+                onAuthStateChanged(auth, async (user) => {
+                    if (user) {
+                        userId = user.uid;
+                        userIdDisplay.textContent = `User ID: ${userId}`;
+                        userIdDisplay.classList.remove('hidden');
+                        authSection.classList.add('hidden');
+                        appSection.classList.remove('hidden');
+                        sharedBookmarkSection.classList.add('hidden');
+                        setupRealtimeListener();
+                    } else {
+                        userId = null;
+                        userIdDisplay.classList.add('hidden');
+                        appSection.classList.add('hidden');
+                        authSection.classList.remove('hidden');
+                        googleSignInBtn.classList.remove('hidden');
+                        loadingMessage.classList.add('hidden');
+                        bookmarksList.innerHTML = '';
+                    }
+                    isAuthReady = true;
+                    await handleSharedLink();
+                });
+
+                // Use the provided custom auth token if available, otherwise sign in anonymously
+                if (initialAuthToken) {
+                    await signInWithCustomToken(auth, initialAuthToken);
+                } else {
+                    await signInAnonymously(auth);
+                }
+
+            } catch (error) {
+                console.error("Firebase initialization or auth error:", error);
+                loadingMessage.textContent = "Error: Failed to initialize the app.";
+            }
+        };
+
+        // Handle sign-in with Google
+        googleSignInBtn.addEventListener('click', async () => {
+            try {
+                const provider = new GoogleAuthProvider();
+                await signInWithPopup(auth, provider);
+            } catch (error) {
+                console.error("Google sign-in failed:", error);
+                // In a real app, show a user-friendly error message
+                alert('Google sign-in failed. Please try again.');
+            }
+        });
+
+        // Setup real-time listener for bookmarks
+        const setupRealtimeListener = () => {
+            if (!db || !userId) return;
+
+            const bookmarksColRef = collection(db, `artifacts/${appId}/users/${userId}/bookmarks`);
+            onSnapshot(bookmarksColRef, (snapshot) => {
+                if (!isAuthReady) return; // Wait for initial auth state to be confirmed
+                
+                const bookmarks = [];
+                snapshot.forEach(doc => {
+                    const data = doc.data();
+                    bookmarks.push({ id: doc.id, ...data });
+                });
+                renderBookmarks(bookmarks);
+            }, (error) => {
+                console.error("Error fetching bookmarks:", error);
+                // In a real app, show a user-friendly error message
+            });
+        };
+
+        // Render bookmarks to the UI
+        const renderBookmarks = (bookmarks) => {
+            bookmarksList.innerHTML = '';
+            if (bookmarks.length === 0) {
+                bookmarksList.innerHTML = '<p class="text-center text-gray-500">No bookmarks added yet.</p>';
+                return;
+            }
+
+            bookmarks.forEach(bookmark => {
+                const li = document.createElement('li');
+                li.className = 'flex items-center justify-between p-4 bg-gray-50 rounded-lg shadow-sm';
+                li.innerHTML = `
+                    <div class="flex-1 min-w-0 pr-4">
+                        <a href="${bookmark.url}" target="_blank" class="block text-lg font-semibold text-indigo-600 hover:text-indigo-800 transition-colors truncate">${bookmark.name}</a>
+                        <p class="text-sm text-gray-500 truncate">${bookmark.url}</p>
+                    </div>
+                    <div class="flex space-x-2">
+                        <button data-id="${bookmark.id}" class="share-btn btn btn-secondary text-sm">Share</button>
+                        <button data-id="${bookmark.id}" class="delete-btn btn btn-secondary text-sm">Delete</button>
+                    </div>
+                `;
+                bookmarksList.appendChild(li);
+            });
+            attachEventListeners();
+        };
+
+        // Attach event listeners for dynamic buttons
+        const attachEventListeners = () => {
+            document.querySelectorAll('.delete-btn').forEach(button => {
+                button.addEventListener('click', handleDelete);
+            });
+            document.querySelectorAll('.share-btn').forEach(button => {
+                button.addEventListener('click', handleShare);
+            });
+        };
+
+        // Handle form submission to add a new bookmark
+        addBookmarkForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const name = bookmarkNameInput.value.trim();
+            const url = bookmarkUrlInput.value.trim();
+
+            if (!name || !url) return;
+
+            try {
+                const bookmarksColRef = collection(db, `artifacts/${appId}/users/${userId}/bookmarks`);
+                await addDoc(bookmarksColRef, {
+                    name,
+                    url,
+                    createdAt: new Date().toISOString()
+                });
+                bookmarkNameInput.value = '';
+                bookmarkUrlInput.value = '';
+            } catch (error) {
+                console.error("Error adding bookmark:", error);
+                // In a real app, show a user-friendly error message
+            }
+        });
+
+        // Handle bookmark deletion
+        const handleDelete = async (e) => {
+            const bookmarkId = e.target.getAttribute('data-id');
+            if (!bookmarkId) return;
+
+            try {
+                const bookmarkDocRef = doc(db, `artifacts/${appId}/users/${userId}/bookmarks/${bookmarkId}`);
+                await deleteDoc(bookmarkDocRef);
+            } catch (error) {
+                console.error("Error deleting bookmark:", error);
+            }
+        };
+
+        // Handle bookmark sharing
+        const handleShare = async (e) => {
+            const bookmarkId = e.target.getAttribute('data-id');
+            if (!bookmarkId) return;
+
+            try {
+                const bookmarkDocRef = doc(db, `artifacts/${appId}/users/${userId}/bookmarks/${bookmarkId}`);
+                const bookmarkSnap = await getDoc(bookmarkDocRef);
+                
+                if (bookmarkSnap.exists()) {
+                    const bookmarkData = bookmarkSnap.data();
+                    
+                    const sharedCollectionRef = collection(db, `artifacts/${appId}/public/data/shared_bookmarks`);
+                    const newSharedDocRef = await addDoc(sharedCollectionRef, bookmarkData);
+                    
+                    const shareUrl = `${window.location.origin}${window.location.pathname}#/shared/${newSharedDocRef.id}`;
+                    
+                    showShareModal(shareUrl);
+                }
+            } catch (error) {
+                console.error("Error sharing bookmark:", error);
+                // Show an error message to the user
+            }
+        };
+
+        // Show the share modal
+        const showShareModal = (url) => {
+            shareUrlInput.value = url;
+            shareModal.classList.remove('hidden');
+        };
+
+        // Handle copy button click
+        copyBtn.addEventListener('click', () => {
+            shareUrlInput.select();
+            shareUrlInput.setSelectionRange(0, 99999); // For mobile devices
+            try {
+                document.execCommand('copy');
+                copyMessage.classList.remove('hidden');
+                setTimeout(() => copyMessage.classList.add('hidden'), 2000);
+            } catch (err) {
+                console.error('Failed to copy text: ', err);
+            }
+        });
+
+        // Close the share modal
+        closeModalBtn.addEventListener('click', () => {
+            shareModal.classList.add('hidden');
+        });
+
+        // Handle the shared link from the URL hash
+        const handleSharedLink = async () => {
+            const hash = window.location.hash;
+            if (hash.startsWith('#/shared/')) {
+                const bookmarkId = hash.substring('#/shared/'.length);
+                
+                // Show the loading message
+                loadingMessage.classList.remove('hidden');
+                sharedBookmarkSection.classList.remove('hidden');
+                appSection.classList.add('hidden');
+                authSection.classList.add('hidden');
+
+                try {
+                    const sharedBookmarkDocRef = doc(db, `artifacts/${appId}/public/data/shared_bookmarks/${bookmarkId}`);
+                    const bookmarkSnap = await getDoc(sharedBookmarkDocRef);
+
+                    if (bookmarkSnap.exists()) {
+                        const data = bookmarkSnap.data();
+                        sharedLink.href = data.url;
+                        sharedLink.textContent = data.name;
+                        sharedName.textContent = data.url;
+                        sharedError.classList.add('hidden');
+                    } else {
+                        sharedLink.textContent = '';
+                        sharedName.textContent = '';
+                        sharedError.textContent = 'This shared bookmark does not exist or has been deleted.';
+                        sharedError.classList.remove('hidden');
+                    }
+                } catch (error) {
+                    console.error("Error fetching shared bookmark:", error);
+                    sharedError.textContent = 'An error occurred while fetching the bookmark.';
+                    sharedError.classList.remove('hidden');
+                } finally {
+                    loadingMessage.classList.add('hidden');
+                }
+            } else {
+                sharedBookmarkSection.classList.add('hidden');
+            }
+        };
+
+        // Listen for hash changes to handle shared links
+        window.addEventListener('hashchange', handleSharedLink);
+        
+        // Initial call to set up the app
+        init();
+    </script>
 </body>
 </html>
 
