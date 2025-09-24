@@ -33,6 +33,30 @@
         .btn-secondary {
             @apply bg-gray-200 text-gray-800 hover:bg-gray-300 focus:ring-gray-400;
         }
+        .dropdown {
+            position: relative;
+        }
+        .dropdown-menu {
+            @apply absolute right-0 top-full mt-2 w-48 bg-white border border-gray-200 rounded-md shadow-lg py-1 z-50 hidden;
+        }
+        .dropdown-menu.active {
+            display: block;
+        }
+        .dropdown-item {
+            @apply block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 w-full text-left;
+        }
+        .modal {
+            @apply fixed inset-0 z-50 flex items-center justify-center p-4 bg-gray-900 bg-opacity-75 hidden;
+        }
+        .modal.active {
+            display: flex;
+        }
+        .modal-content {
+            @apply relative w-full h-full bg-white rounded-xl overflow-hidden;
+        }
+        .iframe-container {
+            @apply w-full h-full;
+        }
     </style>
 </head>
 <body>
@@ -108,7 +132,7 @@
         </div>
         
         <!-- Share Link Modal -->
-        <div id="share-modal" class="fixed inset-0 bg-gray-600 bg-opacity-50 hidden flex items-center justify-center p-4">
+        <div id="share-modal" class="modal">
             <div class="card w-full max-w-lg space-y-4">
                 <h2 class="text-2xl font-semibold text-center">Share this Bookmark</h2>
                 <div class="bg-gray-100 p-4 rounded-lg flex items-center justify-between">
@@ -117,10 +141,24 @@
                         Copy
                     </button>
                 </div>
-                <button id="close-modal-btn" class="btn btn-primary w-full">
+                <button id="close-share-modal-btn" class="btn btn-primary w-full">
                     Close
                 </button>
                 <p id="copy-message" class="text-sm text-green-600 text-center hidden">Copied to clipboard!</p>
+            </div>
+        </div>
+
+        <!-- Preview Modal -->
+        <div id="preview-modal" class="modal">
+            <div class="modal-content">
+                <button id="close-preview-modal-btn" class="absolute top-4 right-4 z-50 bg-white p-2 rounded-full shadow-lg hover:bg-gray-200 transition-colors">
+                    <svg class="h-6 w-6 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                </button>
+                <div class="iframe-container">
+                    <iframe id="preview-iframe" class="w-full h-full border-none rounded-xl" sandbox="allow-scripts allow-forms allow-same-origin allow-popups"></iframe>
+                </div>
             </div>
         </div>
 
@@ -168,8 +206,11 @@
         const shareModal = document.getElementById('share-modal');
         const shareUrlInput = document.getElementById('share-url-input');
         const copyBtn = document.getElementById('copy-btn');
-        const closeModalBtn = document.getElementById('close-modal-btn');
+        const closeModalBtn = document.getElementById('close-share-modal-btn');
         const copyMessage = document.getElementById('copy-message');
+        const previewModal = document.getElementById('preview-modal');
+        const previewIframe = document.getElementById('preview-iframe');
+        const closePreviewModalBtn = document.getElementById('close-preview-modal-btn');
 
         // Initial setup
         const init = async () => {
@@ -268,9 +309,17 @@
                         <a href="${bookmark.url}" target="_blank" class="block text-lg font-semibold text-indigo-600 hover:text-indigo-800 transition-colors truncate">${bookmark.name}</a>
                         <p class="text-sm text-gray-500 truncate">${bookmark.url}</p>
                     </div>
-                    <div class="flex space-x-2">
-                        <button data-id="${bookmark.id}" class="share-btn btn btn-secondary text-sm">Share</button>
-                        <button data-id="${bookmark.id}" class="delete-btn btn btn-secondary text-sm">Delete</button>
+                    <div class="dropdown relative">
+                        <button class="dropdown-toggle p-2 rounded-full hover:bg-gray-200">
+                            <svg class="w-6 h-6 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z" />
+                            </svg>
+                        </button>
+                        <div class="dropdown-menu">
+                            <button data-url="${bookmark.url}" class="dropdown-item preview-btn">Preview Page</button>
+                            <button data-id="${bookmark.id}" class="dropdown-item share-btn">Share</button>
+                            <button data-id="${bookmark.id}" class="dropdown-item delete-btn">Delete</button>
+                        </div>
                     </div>
                 `;
                 bookmarksList.appendChild(li);
@@ -280,11 +329,39 @@
 
         // Attach event listeners for dynamic buttons
         const attachEventListeners = () => {
+            document.querySelectorAll('.dropdown-toggle').forEach(button => {
+                button.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    const menu = button.nextElementSibling;
+                    const isActive = menu.classList.contains('active');
+                    // Close all other dropdowns
+                    document.querySelectorAll('.dropdown-menu.active').forEach(openMenu => {
+                        openMenu.classList.remove('active');
+                    });
+                    // Toggle the current one
+                    if (!isActive) {
+                        menu.classList.add('active');
+                    }
+                });
+            });
+
             document.querySelectorAll('.delete-btn').forEach(button => {
                 button.addEventListener('click', handleDelete);
             });
             document.querySelectorAll('.share-btn').forEach(button => {
                 button.addEventListener('click', handleShare);
+            });
+            document.querySelectorAll('.preview-btn').forEach(button => {
+                button.addEventListener('click', handlePreview);
+            });
+
+            // Close dropdown when clicking outside
+            document.addEventListener('click', (e) => {
+                document.querySelectorAll('.dropdown-menu.active').forEach(menu => {
+                    if (!menu.contains(e.target)) {
+                        menu.classList.remove('active');
+                    }
+                });
             });
         };
 
@@ -348,11 +425,20 @@
                 // Show an error message to the user
             }
         };
+        
+        // Handle previewing the bookmark
+        const handlePreview = (e) => {
+            const url = e.target.getAttribute('data-url');
+            if (url) {
+                previewIframe.src = url;
+                previewModal.classList.add('active');
+            }
+        };
 
         // Show the share modal
         const showShareModal = (url) => {
             shareUrlInput.value = url;
-            shareModal.classList.remove('hidden');
+            shareModal.classList.add('active');
         };
 
         // Handle copy button click
@@ -370,7 +456,13 @@
 
         // Close the share modal
         closeModalBtn.addEventListener('click', () => {
-            shareModal.classList.add('hidden');
+            shareModal.classList.remove('active');
+        });
+
+        // Close the preview modal
+        closePreviewModalBtn.addEventListener('click', () => {
+            previewModal.classList.remove('active');
+            previewIframe.src = ''; // Stop loading the page
         });
 
         // Handle the shared link from the URL hash
