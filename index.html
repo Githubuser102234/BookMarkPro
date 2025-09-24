@@ -128,17 +128,24 @@
 
     <!-- Firebase SDKs -->
     <script type="module">
-        // Set Firebase debug logging level
-        // import { setLogLevel } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
-        // setLogLevel('debug');
-
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged, signInWithCustomToken, signInAnonymously } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, collection, addDoc, onSnapshot, doc, deleteDoc, getDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
-
+        // Import the functions you need from the SDKs you need
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/12.3.0/firebase-app.js";
+        import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged, signInWithCustomToken, signInAnonymously } from "https://www.gstatic.com/firebasejs/12.3.0/firebase-auth.js";
+        import { getFirestore, collection, addDoc, onSnapshot, doc, deleteDoc, getDoc } from "https://www.gstatic.com/firebasejs/12.3.0/firebase-firestore.js";
+        
+        // Your web app's Firebase configuration
+        const firebaseConfig = {
+            apiKey: "AIzaSyB9DTr45XqQ5BwnpmID9lMA0-XsRvFMN1U",
+            authDomain: "bookmarkpro-56e3e.firebaseapp.com",
+            projectId: "bookmarkpro-56e3e",
+            storageBucket: "bookmarkpro-56e3e.firebasestorage.app",
+            messagingSenderId: "408975755939",
+            appId: "1:408975755939:web:0abd1f2603ae6d45fb0d16",
+            measurementId: "G-K63WZML0TE"
+        };
+        
         // Global variables provided by the Canvas environment
         const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
-        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : null;
         const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
 
         let db, auth, userId = null;
@@ -220,6 +227,7 @@
             } catch (error) {
                 console.error("Google sign-in failed:", error);
                 // In a real app, show a user-friendly error message
+                // This is a placeholder for a real modal
                 alert('Google sign-in failed. Please try again.');
             }
         });
