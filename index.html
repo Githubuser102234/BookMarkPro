@@ -36,8 +36,10 @@
         .dropdown {
             position: relative;
         }
+        /* Correctly hides the dropdown menu by default */
         .dropdown-menu {
-            @apply absolute right-0 top-full mt-2 w-48 bg-white border border-gray-200 rounded-md shadow-lg py-1 z-50 hidden;
+            @apply absolute right-0 top-full mt-2 w-48 bg-white border border-gray-200 rounded-md shadow-lg py-1 z-50;
+            display: none;
         }
         .dropdown-menu.active {
             display: block;
