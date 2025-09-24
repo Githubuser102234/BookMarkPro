@@ -179,6 +179,18 @@
             </div>
             <p id="shared-error" class="text-red-500 mt-4 font-medium hidden">Bookmark not found.</p>
         </div>
+        
+        <!-- Auth Section -->
+        <div id="auth-section" class="app-card w-full max-w-sm text-center">
+            <h2 class="text-2xl font-semibold mb-4">Welcome Back</h2>
+            <p class="mb-6 text-gray-500">Sign in to manage your bookmarks.</p>
+            <button id="google-sign-in" class="btn-base btn-primary w-full flex items-center justify-center space-x-2">
+                <svg class="w-5 h-5" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M12.24 10.24v4.48h6.4c-.64 2.88-3.04 4.96-6.4 4.96-3.84 0-6.96-3.12-6.96-6.96s3.12-6.96 6.96-6.96c2.24 0 4.16.96 5.52 2.32l3.36-3.36c-2.16-2.08-4.96-3.44-8.88-3.44-6.48 0-11.76 5.28-11.76 11.76s5.28 11.76 11.76 11.76c6.08 0 10.88-4.48 10.88-11.28 0-.8-.08-1.44-.16-2.08H12.24z"/>
+                </svg>
+                <span>Sign In with Google</span>
+            </button>
+        </div>
 
         <!-- Main App Content -->
         <div id="main-app" class="w-full max-w-2xl space-y-8 hidden">
@@ -269,24 +281,37 @@
 
     <!-- Firebase SDKs -->
     <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, signInWithCustomToken, signInAnonymously } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, doc, collection, onSnapshot, addDoc, updateDoc, deleteDoc, getDoc, getDocs, setLogLevel } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/12.3.0/firebase-app.js";
+        import { getAnalytics } from "https://www.gstatic.com/firebasejs/12.3.0/firebase-analytics.js";
+        import { getAuth, onAuthStateChanged, GoogleAuthProvider, signInWithPopup } from "https://www.gstatic.com/firebasejs/12.3.0/firebase-auth.js";
+        import { getFirestore, doc, collection, onSnapshot, addDoc, updateDoc, deleteDoc, getDoc, setLogLevel } from "https://www.gstatic.com/firebasejs/12.3.0/firebase-firestore.js";
 
-        // Firebase-specific global variables
-        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
-        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {};
-        const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
+        // Your web app's Firebase configuration
+        const firebaseConfig = {
+            apiKey: "AIzaSyB9DTr45XqQ5BwnpmID9lMA0-XsRvFMN1U",
+            authDomain: "bookmarkpro-56e3e.firebaseapp.com",
+            projectId: "bookmarkpro-56e3e",
+            storageBucket: "bookmarkpro-56e3e.firebasestorage.app",
+            messagingSenderId: "408975755939",
+            appId: "1:408975755939:web:0abd1f2603ae6d45fb0d16",
+            measurementId: "G-K63WZML0TE"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const analytics = getAnalytics(app);
 
         let db;
         let auth;
         let userId;
         let unsubscribeBookmarks = null;
         let bookmarksCache = [];
+        let isAuthReady = false;
 
         // UI Elements
+        const authSection = document.getElementById('auth-section');
         const mainApp = document.getElementById('main-app');
         const sharedView = document.getElementById('shared-view');
+        const googleSignInBtn = document.getElementById('google-sign-in');
         const bookmarksList = document.getElementById('bookmarks-list');
         const loadingSpinner = document.getElementById('loading-spinner');
         const searchInput = document.getElementById('search-input');
@@ -351,20 +376,26 @@
         // Firebase Initialization
         const initFirebase = async () => {
             try {
-                const app = initializeApp(firebaseConfig);
                 auth = getAuth(app);
                 db = getFirestore(app);
                 setLogLevel('debug');
 
-                if (initialAuthToken) {
-                    await signInWithCustomToken(auth, initialAuthToken);
-                } else {
-                    await signInAnonymously(auth);
-                }
-
-                userId = auth.currentUser?.uid || crypto.randomUUID();
-                
-                await handleInitialRoute();
+                onAuthStateChanged(auth, async (user) => {
+                    if (user) {
+                        userId = user.uid;
+                        authSection.classList.add('hidden');
+                        mainApp.classList.remove('hidden');
+                        isAuthReady = true;
+                        setupRealtimeListener();
+                    } else {
+                        userId = null;
+                        authSection.classList.remove('hidden');
+                        mainApp.classList.add('hidden');
+                        isAuthReady = true;
+                        if (unsubscribeBookmarks) unsubscribeBookmarks();
+                    }
+                    await handleInitialRoute();
+                });
 
             } catch (error) {
                 console.error("Firebase init failed:", error);
@@ -372,20 +403,37 @@
             }
         };
 
+        const handleGoogleSignIn = async () => {
+            try {
+                const provider = new GoogleAuthProvider();
+                await signInWithPopup(auth, provider);
+            } catch (error) {
+                console.error("Google sign-in failed:", error);
+                showToast("Google sign-in failed.", 'error');
+            }
+        };
+
         // Handle URL hash for shared links
         const handleInitialRoute = async () => {
-            const hash = window.location.hash;
             const params = new URLSearchParams(window.location.search);
             const sharedId = params.get('shareId');
 
             if (sharedId) {
                 mainApp.classList.add('hidden');
+                authSection.classList.add('hidden');
                 sharedView.classList.remove('hidden');
                 await fetchSharedBookmark(sharedId);
             } else {
-                mainApp.classList.remove('hidden');
+                if(isAuthReady) {
+                    if(auth.currentUser) {
+                         mainApp.classList.remove('hidden');
+                         authSection.classList.add('hidden');
+                    } else {
+                         mainApp.classList.add('hidden');
+                         authSection.classList.remove('hidden');
+                    }
+                }
                 sharedView.classList.add('hidden');
-                setupRealtimeListener();
             }
         };
 
@@ -399,7 +447,7 @@
             sharedError.classList.add('hidden');
 
             try {
-                const sharedDocRef = doc(db, `artifacts/${appId}/public/data/shared_bookmarks`, id);
+                const sharedDocRef = doc(db, 'shared_bookmarks', id);
                 const docSnap = await getDoc(sharedDocRef);
 
                 if (docSnap.exists()) {
@@ -418,8 +466,9 @@
 
         // CRUD Operations
         const addBookmark = async (name, url) => {
+            if (!userId) return showToast("User not authenticated.", 'error');
             try {
-                const bookmarksColRef = collection(db, `artifacts/${appId}/users/${userId}/bookmarks`);
+                const bookmarksColRef = collection(db, `users/${userId}/bookmarks`);
                 await addDoc(bookmarksColRef, {
                     name,
                     url,
@@ -434,8 +483,9 @@
         };
 
         const updateBookmark = async (id, name, url) => {
+            if (!userId) return showToast("User not authenticated.", 'error');
             try {
-                const docRef = doc(db, `artifacts/${appId}/users/${userId}/bookmarks`, id);
+                const docRef = doc(db, `users/${userId}/bookmarks`, id);
                 await updateDoc(docRef, { name, url });
                 showToast("Bookmark updated!");
                 hideModal(editModal);
@@ -446,8 +496,9 @@
         };
 
         const deleteBookmark = async (id) => {
+            if (!userId) return showToast("User not authenticated.", 'error');
             try {
-                const docRef = doc(db, `artifacts/${appId}/users/${userId}/bookmarks`, id);
+                const docRef = doc(db, `users/${userId}/bookmarks`, id);
                 await deleteDoc(docRef);
                 showToast("Bookmark deleted!");
             } catch (error) {
@@ -458,7 +509,7 @@
 
         const shareBookmark = async (bookmark) => {
             try {
-                const sharedDocRef = await addDoc(collection(db, `artifacts/${appId}/public/data/shared_bookmarks`), {
+                const sharedDocRef = await addDoc(collection(db, 'shared_bookmarks'), {
                     name: bookmark.name,
                     url: bookmark.url,
                     createdAt: bookmark.createdAt,
@@ -474,11 +525,12 @@
 
         // Real-time listener
         const setupRealtimeListener = () => {
+            if (!userId) return;
             if (unsubscribeBookmarks) unsubscribeBookmarks();
             loadingSpinner.classList.remove('hidden');
             bookmarksList.classList.add('hidden');
 
-            const bookmarksColRef = collection(db, `artifacts/${appId}/users/${userId}/bookmarks`);
+            const bookmarksColRef = collection(db, `users/${userId}/bookmarks`);
             unsubscribeBookmarks = onSnapshot(bookmarksColRef, (snapshot) => {
                 bookmarksCache = [];
                 snapshot.forEach(doc => {
@@ -621,6 +673,7 @@
         };
         
         // General event listeners
+        googleSignInBtn.addEventListener('click', handleGoogleSignIn);
         addForm.addEventListener('submit', handleAddFormSubmit);
         editForm.addEventListener('submit', handleEditFormSubmit);
         cancelEditBtn.addEventListener('click', () => hideModal(editModal));
@@ -643,7 +696,6 @@
             applySavedTheme();
             initFirebase();
         });
-
     </script>
 </body>
 </html>
