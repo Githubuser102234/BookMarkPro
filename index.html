@@ -501,7 +501,7 @@
             const id = path[2];
 
             if (route === 'share') {
-                 // The fix: Pass path[2] as type and path[3] as id
+                 // Correctly gets the type and ID from the path.
                  renderSharedView(path[2], path[3]);
             } else if (!userId) {
                 renderAuthView();
@@ -737,7 +737,7 @@
                     ...sharedData,
                     createdAt: new Date().toISOString()
                 });
-                const shareUrl = `${window.location.origin}${window.location.pathname}#/${type}/share/${docRef.id}`;
+                const shareUrl = `${window.location.origin}${window.location.pathname}#/share/${type}/${docRef.id}`;
                 shareUrlInput.value = shareUrl;
                 showModal(shareModal);
             } catch (error) {
