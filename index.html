@@ -246,8 +246,8 @@
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/12.3.0/firebase-app.js";
         import { getAnalytics } from "https://www.gstatic.com/firebasejs/12.3.0/firebase-analytics.js";
-        import { getAuth, onAuthStateChanged, GoogleAuthProvider, signInWithPopup } from "https://www.gstatic.com/firebasejs/12.3.0/firebase-auth.js";
-        import { getFirestore, doc, collection, onSnapshot, addDoc, updateDoc, deleteDoc, getDoc, setLogLevel } from "https://www.gstatic.com/firebasejs/12.3.0/firebase-firestore.js";
+        import { getAuth, onAuthStateChanged, GoogleAuthProvider, signInWithPopup, signInAnonymously } from "https://www.gstatic.com/firebasejs/12.3.0/firebase-auth.js";
+        import { getFirestore, doc, collection, onSnapshot, addDoc, updateDoc, deleteDoc, getDoc, setLogLevel, query, where, getDocs } from "https://www.gstatic.com/firebasejs/12.3.0/firebase-firestore.js";
 
         // Your web app's Firebase configuration
         const firebaseConfig = {
@@ -476,15 +476,52 @@
                 <div id="auth-section" class="app-card w-full max-w-sm text-center">
                     <h2 class="text-2xl font-semibold mb-4">Welcome Back</h2>
                     <p class="mb-6 text-gray-500">Sign in to manage your bookmarks and notes.</p>
-                    <button id="google-sign-in" class="btn-base btn-primary w-full flex items-center justify-center space-x-2">
-                        <svg class="w-5 h-5" viewBox="0 0 24 24" fill="currentColor">
-                            <path d="M12.24 10.24v4.48h6.4c-.64 2.88-3.04 4.96-6.4 4.96-3.84 0-6.96-3.12-6.96-6.96s3.12-6.96 6.96-6.96c2.24 0 4.16.96 5.52 2.32l3.36-3.36c-2.16-2.08-4.96-3.44-8.88-3.44-6.48 0-11.76 5.28-11.76 11.76s5.28 11.76 11.76 11.76c6.08 0 10.88-4.48 10.88-11.28 0-.8-.08-1.44-.16-2.08H12.24z"/>
-                        </svg>
-                        <span>Sign In with Google</span>
-                    </button>
+                    <div class="space-y-4">
+                        <button id="google-sign-in" class="btn-base btn-primary w-full flex items-center justify-center space-x-2">
+                            <svg class="w-5 h-5" viewBox="0 0 24 24" fill="currentColor">
+                                <path d="M12.24 10.24v4.48h6.4c-.64 2.88-3.04 4.96-6.4 4.96-3.84 0-6.96-3.12-6.96-6.96s3.12-6.96 6.96-6.96c2.24 0 4.16.96 5.52 2.32l3.36-3.36c-2.16-2.08-4.96-3.44-8.88-3.44-6.48 0-11.76 5.28-11.76 11.76s5.28 11.76 11.76 11.76c6.08 0 10.88-4.48 10.88-11.28 0-.8-.08-1.44-.16-2.08H12.24z"/>
+                            </svg>
+                            <span>Sign In with Google</span>
+                        </button>
+                        <p class="text-gray-400">or</p>
+                        <a href="#/quick-signin" class="btn-base btn-secondary w-full text-center block">Quick Sign In</a>
+                        <a href="#/quick-signup" class="btn-base btn-secondary w-full text-center block">Quick Sign Up</a>
+                    </div>
                 </div>
             `;
             document.getElementById('google-sign-in').addEventListener('click', handleGoogleSignIn);
+        };
+
+        const renderQuickSignupView = () => {
+             mainTitle.textContent = "Quick Sign Up";
+             contentContainer.innerHTML = `
+                 <div class="app-card w-full max-w-sm text-center">
+                     <h2 class="text-2xl font-semibold mb-4">Create Your Account</h2>
+                     <form id="quick-signup-form" class="space-y-4">
+                         <input type="text" id="signup-user-id" class="input-base" placeholder="User ID" required>
+                         <input type="password" id="signup-password" class="input-base" placeholder="Password" required>
+                         <button type="submit" class="btn-base btn-primary w-full">Sign Up</button>
+                     </form>
+                     <p class="mt-4 text-sm text-gray-500">Already have an account? <a href="#/quick-signin" class="text-blue-500 hover:underline">Sign In</a></p>
+                 </div>
+             `;
+             document.getElementById('quick-signup-form').addEventListener('submit', handleQuickSignup);
+        };
+
+        const renderQuickSigninView = () => {
+            mainTitle.textContent = "Quick Sign In";
+            contentContainer.innerHTML = `
+                <div class="app-card w-full max-w-sm text-center">
+                    <h2 class="text-2xl font-semibold mb-4">Sign In to Your Account</h2>
+                    <form id="quick-signin-form" class="space-y-4">
+                        <input type="text" id="signin-user-id" class="input-base" placeholder="User ID" required>
+                        <input type="password" id="signin-password" class="input-base" placeholder="Password" required>
+                        <button type="submit" class="btn-base btn-primary w-full">Sign In</button>
+                    </form>
+                    <p class="mt-4 text-sm text-gray-500">Don't have an account? <a href="#/quick-signup" class="text-blue-500 hover:underline">Sign Up</a></p>
+                </div>
+            `;
+            document.getElementById('quick-signin-form').addEventListener('submit', handleQuickSignin);
         };
         
         const renderSharedView = async (type, id) => {
@@ -519,6 +556,10 @@
             if (route === 'share') {
                  // Correctly gets the type and ID from the path.
                  renderSharedView(path[2], path[3]);
+            } else if (route === 'quick-signin') {
+                renderQuickSigninView();
+            } else if (route === 'quick-signup') {
+                renderQuickSignupView();
             } else if (!userId) {
                 renderAuthView();
             } else if (route === 'notes' && id) {
@@ -559,6 +600,60 @@
                 showToast("Google sign-in failed.", 'error');
             }
         };
+
+        const handleQuickSignup = async (e) => {
+            e.preventDefault();
+            const quickUserId = document.getElementById('signup-user-id').value;
+            const password = document.getElementById('signup-password').value;
+
+            // Check if user ID already exists
+            const q = query(collection(db, 'quick-sign-in-users'), where('userId', '==', quickUserId));
+            const querySnapshot = await getDocs(q);
+            if (!querySnapshot.empty) {
+                showToast("User ID already exists. Please choose another one.", 'error');
+                return;
+            }
+
+            try {
+                // Store the custom credentials in Firestore
+                await addDoc(collection(db, 'quick-sign-in-users'), {
+                    userId: quickUserId,
+                    password: password, // In a real app, this should be a hashed password.
+                    createdAt: new Date().toISOString()
+                });
+
+                // Sign in anonymously to link data to a Firebase Auth user
+                await signInAnonymously(auth);
+                showToast("Account created and signed in!");
+            } catch (error) {
+                console.error("Quick sign up failed:", error);
+                showToast("Sign up failed. Please try again.", 'error');
+            }
+        };
+
+        const handleQuickSignin = async (e) => {
+            e.preventDefault();
+            const quickUserId = document.getElementById('signin-user-id').value;
+            const password = document.getElementById('signin-password').value;
+
+            try {
+                // Find a user with the matching credentials
+                const q = query(collection(db, 'quick-sign-in-users'), where('userId', '==', quickUserId), where('password', '==', password));
+                const querySnapshot = await getDocs(q);
+
+                if (!querySnapshot.empty) {
+                    // Sign in anonymously and then redirect
+                    await signInAnonymously(auth);
+                    showToast("Signed in successfully!");
+                } else {
+                    showToast("Invalid user ID or password.", 'error');
+                }
+            } catch (error) {
+                console.error("Quick sign in failed:", error);
+                showToast("Sign in failed. Please try again.", 'error');
+            }
+        };
+
 
         // --- Data Fetching and Management ---
         const setupRealtimeListener = (type) => {
