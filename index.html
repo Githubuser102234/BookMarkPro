@@ -500,8 +500,10 @@
                      <form id="quick-signup-form" class="space-y-4">
                          <input type="text" id="signup-username" class="input-base" placeholder="Username" required>
                          <input type="password" id="signup-password" class="input-base" placeholder="Password" required>
-                         <div id="signup-error" class="text-red-500 text-sm mt-2"></div>
-                         <button type="submit" class="btn-base btn-primary w-full">Sign Up</button>
+                         <div id="signup-error" class="text-red-500 text-sm mt-2 font-medium"></div>
+                         <button type="submit" id="signup-btn" class="btn-base btn-primary w-full flex items-center justify-center">
+                            Sign Up
+                         </button>
                      </form>
                      <p class="mt-4 text-sm text-gray-500">Already have an account? <a href="#/quick-signin" class="text-blue-500 hover:underline">Sign In</a></p>
                  </div>
@@ -517,8 +519,10 @@
                     <form id="quick-signin-form" class="space-y-4">
                         <input type="text" id="signin-username" class="input-base" placeholder="Username" required>
                         <input type="password" id="signin-password" class="input-base" placeholder="Password" required>
-                        <div id="signin-error" class="text-red-500 text-sm mt-2"></div>
-                        <button type="submit" class="btn-base btn-primary w-full">Sign In</button>
+                        <div id="signin-error" class="text-red-500 text-sm mt-2 font-medium"></div>
+                        <button type="submit" id="signin-btn" class="btn-base btn-primary w-full flex items-center justify-center">
+                            Sign In
+                        </button>
                     </form>
                     <p class="mt-4 text-sm text-gray-500">Don't have an account? <a href="#/quick-signup" class="text-blue-500 hover:underline">Sign Up</a></p>
                 </div>
@@ -611,23 +615,26 @@
             }
         };
 
-
         const handleQuickSignup = async (e) => {
             e.preventDefault();
+            const signupBtn = document.getElementById('signup-btn');
+            signupBtn.innerHTML = `<div class="loader w-6 h-6 border-2"></div>`;
+            signupBtn.disabled = true;
+
             const username = document.getElementById('signup-username').value;
             const password = document.getElementById('signup-password').value;
 
             setUIError('signup-error', ''); // Clear previous errors
 
-            // Check if username already exists
-            const q = query(collection(db, 'quick-sign-in-users'), where('username', '==', username));
-            const querySnapshot = await getDocs(q);
-            if (!querySnapshot.empty) {
-                setUIError('signup-error', "Username already exists. Please choose another one.");
-                return;
-            }
-
             try {
+                // Check if username already exists
+                const q = query(collection(db, 'quick-sign-in-users'), where('username', '==', username));
+                const querySnapshot = await getDocs(q);
+                if (!querySnapshot.empty) {
+                    setUIError('signup-error', "Username already exists. Please choose another one.");
+                    return;
+                }
+
                 // Store the custom credentials in Firestore
                 await addDoc(collection(db, 'quick-sign-in-users'), {
                     username: username,
@@ -641,11 +648,18 @@
             } catch (error) {
                 console.error("Quick sign up failed:", error);
                 setUIError('signup-error', "Sign up failed. Please try again.");
+            } finally {
+                signupBtn.innerHTML = `Sign Up`;
+                signupBtn.disabled = false;
             }
         };
 
         const handleQuickSignin = async (e) => {
             e.preventDefault();
+            const signinBtn = document.getElementById('signin-btn');
+            signinBtn.innerHTML = `<div class="loader w-6 h-6 border-2"></div>`;
+            signinBtn.disabled = true;
+
             const username = document.getElementById('signin-username').value;
             const password = document.getElementById('signin-password').value;
             
@@ -666,6 +680,9 @@
             } catch (error) {
                 console.error("Quick sign in failed:", error);
                 setUIError('signin-error', "Sign in failed. Please try again.");
+            } finally {
+                signinBtn.innerHTML = `Sign In`;
+                signinBtn.disabled = false;
             }
         };
 
