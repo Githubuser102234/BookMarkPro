@@ -201,6 +201,20 @@
                 </form>
             </div>
         </div>
+        
+        <!-- Folder Modal -->
+        <div id="folder-modal" class="modal-overlay">
+            <div class="modal-content">
+                <h2 class="text-xl font-semibold mb-4 text-center">Add New Folder</h2>
+                <form id="add-folder-form" class="space-y-4">
+                    <input type="text" id="add-folder-name" class="input-base" placeholder="Folder Name" required>
+                    <div class="flex justify-end space-x-2">
+                        <button type="button" id="cancel-folder" class="btn-base btn-secondary">Cancel</button>
+                        <button type="submit" class="btn-base btn-primary">Create Folder</button>
+                    </div>
+                </form>
+            </div>
+        </div>
 
         <div id="share-modal" class="modal-overlay">
             <div class="modal-content">
@@ -250,7 +264,7 @@
         import { initializeApp } from "https://www.gstatic.com/firebasejs/12.3.0/firebase-app.js";
         import { getAnalytics } from "https://www.gstatic.com/firebasejs/12.3.0/firebase-analytics.js";
         import { getAuth, onAuthStateChanged, GoogleAuthProvider, signInWithPopup, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut } from "https://www.gstatic.com/firebasejs/12.3.0/firebase-auth.js";
-        import { getFirestore, doc, collection, onSnapshot, addDoc, updateDoc, deleteDoc, getDoc, setLogLevel } from "https://www.gstatic.com/firebasejs/12.3.0/firebase-firestore.js";
+        import { getFirestore, doc, collection, onSnapshot, addDoc, updateDoc, deleteDoc, getDoc, setLogLevel, query, where } from "https://www.gstatic.com/firebasejs/12.3.0/firebase-firestore.js";
 
         // Your web app's Firebase configuration
         const firebaseConfig = {
@@ -271,8 +285,10 @@
         let userId;
         let unsubscribeBookmarks = null;
         let unsubscribeNotes = null;
+        let unsubscribeFolders = null;
         let bookmarksCache = [];
         let notesCache = [];
+        let foldersCache = [];
         let isAuthReady = false;
 
         // UI Elements
@@ -303,6 +319,12 @@
         const confirmDeleteBtn = document.getElementById('confirm-delete');
         const cancelDeleteBtn = document.getElementById('cancel-delete');
         let confirmActionCallback = null; // A variable to hold the function to be called on confirmation
+        // Folder Modal Elements
+        const folderModal = document.getElementById('folder-modal');
+        const addFolderForm = document.getElementById('add-folder-form');
+        const addFolderNameInput = document.getElementById('add-folder-name');
+        const cancelFolderBtn = document.getElementById('cancel-folder');
+
 
         // Toast functionality
         const showToast = (message, type = 'success') => {
@@ -352,8 +374,19 @@
                     <form id="add-bookmark-form" class="space-y-4">
                         <input type="text" id="add-name" class="input-base" placeholder="Site Name (e.g., Google)" required>
                         <input type="url" id="add-url" class="input-base" placeholder="URL (e.g., https://www.google.com)" required>
+                        <select id="add-folder-select" class="input-base"></select>
                         <button type="submit" class="btn-base btn-primary w-full">Save Bookmark</button>
                     </form>
+                </div>
+                <div class="app-card mb-8">
+                    <h2 class="text-2xl font-semibold mb-4 text-center">My Folders</h2>
+                    <div id="folders-container" class="space-y-4">
+                        <div id="loading-spinner-folders" class="flex justify-center py-8">
+                            <div class="loader"></div>
+                        </div>
+                        <ul id="folders-list" class="space-y-4 hidden"></ul>
+                    </div>
+                     <button id="add-folder-btn" class="btn-base btn-secondary w-full mt-4">Add New Folder</button>
                 </div>
                 <div class="app-card">
                     <h2 class="text-2xl font-semibold mb-4 text-center">My Links</h2>
@@ -381,8 +414,61 @@
             document.getElementById('add-bookmark-form').addEventListener('submit', handleAddFormSubmit);
             document.getElementById('search-input').addEventListener('input', filterAndSortBookmarks);
             document.getElementById('sort-select').addEventListener('change', filterAndSortBookmarks);
+            document.getElementById('add-folder-btn').addEventListener('click', () => showModal(folderModal));
+            setupRealtimeListener('folders');
             setupRealtimeListener('bookmarks');
             filterAndSortBookmarks();
+        };
+
+        const renderFolderContentsView = (folderId) => {
+            const folder = foldersCache.find(f => f.id === folderId);
+            if (!folder) {
+                showToast("Folder not found. Redirecting...", "error");
+                window.location.hash = '#/bookmarks';
+                return;
+            }
+
+            mainTitle.textContent = folder.name;
+            contentContainer.innerHTML = `
+                <div class="flex space-x-2 mb-4">
+                    <button class="btn-base btn-secondary" onclick="window.location.hash = '#/bookmarks'">Back to Bookmarks</button>
+                </div>
+                 <div class="app-card mb-8">
+                    <h2 class="text-2xl font-semibold mb-4 text-center">Add a New Link to this Folder</h2>
+                    <form id="add-bookmark-form" class="space-y-4">
+                        <input type="text" id="add-name" class="input-base" placeholder="Site Name (e.g., Google)" required>
+                        <input type="url" id="add-url" class="input-base" placeholder="URL (e.g., https://www.google.com)" required>
+                        <button type="submit" class="btn-base btn-primary w-full">Save Bookmark</button>
+                    </form>
+                </div>
+                <div class="app-card">
+                    <h2 class="text-2xl font-semibold mb-4 text-center">Links in ${folder.name}</h2>
+                    <div class="flex flex-col md:flex-row items-center justify-between mb-4 space-y-4 md:space-y-0 md:space-x-4">
+                        <input type="text" id="search-input" class="input-base flex-1" placeholder="Search bookmarks...">
+                        <div class="flex items-center space-x-2">
+                            <label for="sort-select" class="text-sm text-gray-500 dark:text-gray-400">Sort by:</label>
+                            <select id="sort-select" class="input-base text-sm">
+                                <option value="createdAt-desc">Newest</option>
+                                <option value="createdAt-asc">Oldest</option>
+                                <option value="name-asc">Name (A-Z)</option>
+                                <option value="name-desc">Name (Z-A)</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div id="bookmarks-container" class="space-y-4">
+                         <div id="loading-spinner-bookmarks" class="flex justify-center py-8">
+                            <div class="loader"></div>
+                        </div>
+                        <ul id="bookmarks-list" class="space-y-4 hidden"></ul>
+                    </div>
+                </div>
+            `;
+            // Attach new listeners
+            document.getElementById('add-bookmark-form').addEventListener('submit', (e) => handleAddFormSubmit(e, folderId));
+            document.getElementById('search-input').addEventListener('input', () => filterAndSortBookmarks(folderId));
+            document.getElementById('sort-select').addEventListener('change', () => filterAndSortBookmarks(folderId));
+            setupRealtimeListener('bookmarks', folderId);
+            filterAndSortBookmarks(folderId);
         };
 
         const renderNotesView = () => {
@@ -547,7 +633,7 @@
             if (!isAuthReady) return;
             const path = window.location.hash.slice(1).split('/');
             const route = path[1] || 'bookmarks';
-            const id = path[2];
+            const folderId = path[2] === 'folder' ? path[3] : null;
 
             if (route === 'share') {
                  renderSharedView(path[2], path[3]);
@@ -559,10 +645,12 @@
                  } else {
                      window.location.hash = '#/signin';
                  }
-            } else if (route === 'notes' && id) {
-                 renderNoteEditorView(id);
+            } else if (route === 'notes' && path[2]) {
+                 renderNoteEditorView(path[2]);
             } else if (route === 'notes') {
                  renderNotesView();
+            } else if (route === 'bookmarks' && folderId) {
+                renderFolderContentsView(folderId);
             } else {
                  renderBookmarksView();
             }
@@ -646,8 +734,9 @@
         };
 
         // --- Data Fetching and Management ---
-        const setupRealtimeListener = (type) => {
+        const setupRealtimeListener = (type, folderId = null) => {
             if (!userId) return;
+
             if (type === 'bookmarks') {
                 if (unsubscribeBookmarks) unsubscribeBookmarks();
                 const loadingSpinner = document.getElementById('loading-spinner-bookmarks');
@@ -655,13 +744,19 @@
                 loadingSpinner.classList.remove('hidden');
                 list.classList.add('hidden');
                 
-                const colRef = collection(db, `users/${userId}/bookmarks`);
-                unsubscribeBookmarks = onSnapshot(colRef, (snapshot) => {
+                let q = collection(db, `users/${userId}/bookmarks`);
+                if (folderId) {
+                    q = query(q, where('folderId', '==', folderId));
+                } else {
+                    q = query(q, where('folderId', '==', null));
+                }
+
+                unsubscribeBookmarks = onSnapshot(q, (snapshot) => {
                     bookmarksCache = [];
                     snapshot.forEach(doc => {
                         bookmarksCache.push({ id: doc.id, ...doc.data() });
                     });
-                    filterAndSortBookmarks();
+                    filterAndSortBookmarks(folderId);
                     loadingSpinner.classList.add('hidden');
                     list.classList.remove('hidden');
                 }, (error) => {
@@ -692,6 +787,28 @@
                     loadingSpinner.classList.add('hidden');
                     list.classList.remove('hidden');
                 });
+            } else if (type === 'folders') {
+                 if (unsubscribeFolders) unsubscribeFolders();
+                 const loadingSpinner = document.getElementById('loading-spinner-folders');
+                 const list = document.getElementById('folders-list');
+                 loadingSpinner.classList.remove('hidden');
+                 list.classList.add('hidden');
+                 const colRef = collection(db, `users/${userId}/folders`);
+                 unsubscribeFolders = onSnapshot(colRef, (snapshot) => {
+                     foldersCache = [];
+                     snapshot.forEach(doc => {
+                         foldersCache.push({ id: doc.id, ...doc.data() });
+                     });
+                     renderFoldersList(foldersCache);
+                     populateFolderSelect();
+                     loadingSpinner.classList.add('hidden');
+                     list.classList.remove('hidden');
+                 }, (error) => {
+                     console.error("Error fetching folders:", error);
+                     showToast("Failed to load folders.", "error");
+                     loadingSpinner.classList.add('hidden');
+                     list.classList.add('hidden');
+                 });
             }
         };
         
@@ -739,13 +856,14 @@
         };
 
         // --- CRUD Operations ---
-        const addBookmark = async (name, url) => {
+        const addBookmark = async (name, url, folderId) => {
             if (!userId) return showToast("User not authenticated.", 'error');
             try {
                 const colRef = collection(db, `users/${userId}/bookmarks`);
                 await addDoc(colRef, {
                     name,
                     url,
+                    folderId: folderId || null,
                     createdAt: new Date().toISOString()
                 });
                 showToast("Bookmark saved successfully!");
@@ -779,6 +897,38 @@
             } catch (error) {
                 console.error("Error deleting bookmark:", error);
                 showToast("Failed to delete bookmark.", 'error');
+            }
+        };
+
+        const addFolder = async (name) => {
+            if (!userId) return showToast("User not authenticated.", 'error');
+            try {
+                const colRef = collection(db, `users/${userId}/folders`);
+                await addDoc(colRef, {
+                    name,
+                    createdAt: new Date().toISOString()
+                });
+                showToast("Folder created successfully!");
+                hideModal(folderModal);
+                addFolderNameInput.value = '';
+            } catch (error) {
+                console.error("Error adding folder:", error);
+                showToast("Failed to create folder.", "error");
+            }
+        };
+
+        const deleteFolder = async (id) => {
+            if (!userId) return showToast("User not authenticated.", 'error');
+            try {
+                const docRef = doc(db, `users/${userId}/folders`, id);
+                await deleteDoc(docRef);
+                // Note: Firestore rules will cascade delete subcollections, but not documents directly in `bookmarks`.
+                // For this simple app, we will let the bookmarks remain "orphaned" or un-categorized.
+                // A more robust solution would be to update the bookmarks' folderId to null.
+                showToast("Folder deleted!");
+            } catch (error) {
+                console.error("Error deleting folder:", error);
+                showToast("Failed to delete folder.", "error");
             }
         };
 
@@ -844,7 +994,7 @@
         };
 
         // --- Filtering, Sorting, and Rendering ---
-        const filterAndSortBookmarks = () => {
+        const filterAndSortBookmarks = (folderId = null) => {
             const searchInput = document.getElementById('search-input');
             const sortSelect = document.getElementById('sort-select');
             if (!searchInput || !sortSelect) return;
@@ -871,10 +1021,49 @@
                 }
             });
 
-            renderBookmarksList(filteredBookmarks);
+            renderBookmarksList(filteredBookmarks, folderId);
         };
 
-        const renderBookmarksList = (bookmarks) => {
+        const renderFoldersList = (folders) => {
+            const foldersList = document.getElementById('folders-list');
+            if (!foldersList) return;
+            
+            foldersList.innerHTML = '';
+            if (folders.length === 0) {
+                 foldersList.innerHTML = `<li class="text-center text-gray-500 py-8">No folders found.</li>`;
+            }
+
+            folders.forEach(folder => {
+                 const li = document.createElement('li');
+                 li.className = 'flex items-center justify-between p-4 bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 transition-colors duration-300 cursor-pointer';
+                 li.innerHTML = `
+                      <a href="#/bookmarks/folder/${folder.id}" class="flex-1 text-lg font-semibold text-blue-500 hover:underline truncate">
+                          <svg class="w-6 h-6 inline-block mr-2" fill="currentColor" viewBox="0 0 24 24"><path d="M10 4H4c-1.11 0-2 .89-2 2v12a2 2 0 002 2h16a2 2 0 002-2V8a2 2 0 00-2-2h-8l-2-2z" /></svg>
+                          <span>${folder.name}</span>
+                      </a>
+                      <button class="btn-icon delete-folder-btn" data-id="${folder.id}">
+                          <svg class="w-5 h-5 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                      </button>
+                 `;
+                 foldersList.appendChild(li);
+            });
+            foldersList.querySelectorAll('.delete-folder-btn').forEach(btn => btn.addEventListener('click', handleDeleteFolderClick));
+        };
+        
+        const populateFolderSelect = () => {
+            const select = document.getElementById('add-folder-select');
+            if (!select) return;
+
+            select.innerHTML = '<option value="">(No Folder)</option>';
+            foldersCache.forEach(folder => {
+                const option = document.createElement('option');
+                option.value = folder.id;
+                option.textContent = folder.name;
+                select.appendChild(option);
+            });
+        };
+
+        const renderBookmarksList = (bookmarks, folderId) => {
             const bookmarksList = document.getElementById('bookmarks-list');
             if (!bookmarksList) return;
 
@@ -885,6 +1074,7 @@
             }
 
             bookmarks.forEach(bookmark => {
+                if (folderId && bookmark.folderId !== folderId) return;
                 const li = document.createElement('li');
                 li.className = 'flex flex-col md:flex-row items-start md:items-center justify-between p-4 bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 transition-colors duration-300';
                 li.innerHTML = `
@@ -960,17 +1150,29 @@
         };
 
         // --- Event Handlers ---
-        const handleAddFormSubmit = (e) => {
+        const handleAddFormSubmit = (e, folderId = null) => {
             e.preventDefault();
             const name = document.getElementById('add-name').value;
             const url = document.getElementById('add-url').value;
-            addBookmark(name, url);
+            let selectedFolderId = folderId;
+            if (!selectedFolderId) {
+                const select = document.getElementById('add-folder-select');
+                if (select) {
+                    selectedFolderId = select.value || null;
+                }
+            }
+            addBookmark(name, url, selectedFolderId);
         };
         const handleAddNoteFormSubmit = (e) => {
             e.preventDefault();
             const title = document.getElementById('add-note-title').value;
             const content = document.getElementById('add-note-content').value;
             addNote(title, content);
+        };
+        const handleAddFolderFormSubmit = (e) => {
+            e.preventDefault();
+            const name = document.getElementById('add-folder-name').value;
+            addFolder(name);
         };
         const handleEditNoteFormSubmit = (e, noteId) => {
             e.preventDefault();
@@ -999,6 +1201,11 @@
             list.querySelectorAll('.edit-btn').forEach(btn => btn.addEventListener('click', handleEdit));
             list.querySelectorAll('.share-btn').forEach(btn => btn.addEventListener('click', handleShareBookmark));
             list.querySelectorAll('.delete-btn').forEach(btn => btn.addEventListener('click', handleDeleteBookmarkClick));
+        };
+        
+        const handleDeleteFolderClick = (e) => {
+            const folderId = e.currentTarget.dataset.id;
+            showConfirmModal(() => deleteFolder(folderId));
         };
 
         const handlePreview = (e) => {
@@ -1045,6 +1252,8 @@
         window.addEventListener('hashchange', router);
         editForm.addEventListener('submit', handleEditFormSubmit);
         cancelEditBtn.addEventListener('click', () => hideModal(editModal));
+        addFolderForm.addEventListener('submit', handleAddFolderFormSubmit);
+        cancelFolderBtn.addEventListener('click', () => hideModal(folderModal));
         closeShareBtn.addEventListener('click', () => hideModal(shareModal));
         copyBtn.addEventListener('click', () => {
              shareUrlInput.select();
@@ -1074,3 +1283,4 @@
     </script>
 </body>
 </html>
+
