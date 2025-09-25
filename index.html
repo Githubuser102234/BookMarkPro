@@ -215,6 +215,21 @@
                 </form>
             </div>
         </div>
+        
+        <!-- Rename Folder Modal -->
+        <div id="rename-folder-modal" class="modal-overlay">
+            <div class="modal-content">
+                <h2 class="text-xl font-semibold mb-4 text-center">Rename Folder</h2>
+                <form id="rename-folder-form" class="space-y-4">
+                    <input type="hidden" id="rename-folder-id">
+                    <input type="text" id="rename-folder-name" class="input-base" placeholder="New Folder Name" required>
+                    <div class="flex justify-end space-x-2">
+                        <button type="button" id="cancel-rename" class="btn-base btn-secondary">Cancel</button>
+                        <button type="submit" class="btn-base btn-primary">Save Changes</button>
+                    </div>
+                </form>
+            </div>
+        </div>
 
         <div id="share-modal" class="modal-overlay">
             <div class="modal-content">
@@ -252,8 +267,8 @@
                 <h2 class="text-xl font-semibold mb-4">Confirm Deletion</h2>
                 <p class="mb-6">Are you sure you want to delete this item? This action cannot be undone.</p>
                 <div class="flex justify-center space-x-4">
-                    <button id="cancel-delete" class="btn-base btn-secondary">Cancel</button>
-                    <button id="confirm-delete" class="btn-base bg-red-500 text-white hover:bg-red-600">Delete</button>
+                    <button type="button" id="cancel-delete" class="btn-base btn-secondary">Cancel</button>
+                    <button type="button" id="confirm-delete" class="btn-base bg-red-500 text-white hover:bg-red-600">Delete</button>
                 </div>
             </div>
         </div>
@@ -307,6 +322,15 @@
         const editName = document.getElementById('edit-name');
         const editUrl = document.getElementById('edit-url');
         const cancelEditBtn = document.getElementById('cancel-edit');
+        const folderModal = document.getElementById('folder-modal');
+        const addFolderForm = document.getElementById('add-folder-form');
+        const addFolderNameInput = document.getElementById('add-folder-name');
+        const cancelFolderBtn = document.getElementById('cancel-folder');
+        const renameFolderModal = document.getElementById('rename-folder-modal');
+        const renameFolderForm = document.getElementById('rename-folder-form');
+        const renameFolderIdInput = document.getElementById('rename-folder-id');
+        const renameFolderNameInput = document.getElementById('rename-folder-name');
+        const cancelRenameBtn = document.getElementById('cancel-rename');
         const shareModal = document.getElementById('share-modal');
         const shareUrlInput = document.getElementById('share-url');
         const copyBtn = document.getElementById('copy-btn');
@@ -314,17 +338,10 @@
         const previewModal = document.getElementById('preview-modal');
         const previewIframe = document.getElementById('preview-iframe');
         const closePreviewBtn = document.getElementById('close-preview');
-        // New confirm modal elements
         const confirmModal = document.getElementById('confirm-modal');
         const confirmDeleteBtn = document.getElementById('confirm-delete');
         const cancelDeleteBtn = document.getElementById('cancel-delete');
-        let confirmActionCallback = null; // A variable to hold the function to be called on confirmation
-        // Folder Modal Elements
-        const folderModal = document.getElementById('folder-modal');
-        const addFolderForm = document.getElementById('add-folder-form');
-        const addFolderNameInput = document.getElementById('add-folder-name');
-        const cancelFolderBtn = document.getElementById('cancel-folder');
-
+        let confirmActionCallback = null;
 
         // Toast functionality
         const showToast = (message, type = 'success') => {
@@ -420,11 +437,36 @@
             filterAndSortBookmarks();
         };
 
-        const renderFolderContentsView = (folderId) => {
-            const folder = foldersCache.find(f => f.id === folderId);
+        const renderFolderContentsView = async (folderId) => {
+            mainTitle.textContent = "Loading Folder...";
+            contentContainer.innerHTML = `
+                <div class="app-card flex flex-col items-center justify-center min-h-[300px]">
+                    <div class="loader mb-4"></div>
+                    <p class="text-gray-500">Loading folder content...</p>
+                </div>
+            `;
+            
+            // Try to find the folder in the cache first.
+            let folder = foldersCache.find(f => f.id === folderId);
+            
+            // If not in cache, fetch it directly. This handles the page refresh scenario.
+            if (!folder) {
+                try {
+                    const docRef = doc(db, `users/${userId}/folders`, folderId);
+                    const docSnap = await getDoc(docRef);
+                    if (docSnap.exists()) {
+                        folder = { id: docSnap.id, ...docSnap.data() };
+                    }
+                } catch (error) {
+                    console.error("Error fetching folder:", error);
+                    folder = null;
+                }
+            }
+
             if (!folder) {
                 showToast("Folder not found. Redirecting...", "error");
-                window.location.hash = '#/bookmarks';
+                // Use a short delay before redirect to allow toast to be seen
+                setTimeout(() => window.location.hash = '#/bookmarks', 1500);
                 return;
             }
 
@@ -916,6 +958,19 @@
                 showToast("Failed to create folder.", "error");
             }
         };
+        
+        const updateFolder = async (id, name) => {
+            if (!userId) return showToast("User not authenticated.", 'error');
+            try {
+                const docRef = doc(db, `users/${userId}/folders`, id);
+                await updateDoc(docRef, { name });
+                showToast("Folder renamed successfully!");
+                hideModal(renameFolderModal);
+            } catch (error) {
+                console.error("Error renaming folder:", error);
+                showToast("Failed to rename folder.", 'error');
+            }
+        };
 
         const deleteFolder = async (id) => {
             if (!userId) return showToast("User not authenticated.", 'error');
@@ -1041,13 +1096,19 @@
                           <svg class="w-6 h-6 inline-block mr-2" fill="currentColor" viewBox="0 0 24 24"><path d="M10 4H4c-1.11 0-2 .89-2 2v12a2 2 0 002 2h16a2 2 0 002-2V8a2 2 0 00-2-2h-8l-2-2z" /></svg>
                           <span>${folder.name}</span>
                       </a>
-                      <button class="btn-icon delete-folder-btn" data-id="${folder.id}">
-                          <svg class="w-5 h-5 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
-                      </button>
+                      <div class="flex space-x-2">
+                           <button class="btn-icon rename-folder-btn" data-id="${folder.id}" data-name="${folder.name}">
+                               <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" /></svg>
+                           </button>
+                           <button class="btn-icon delete-folder-btn" data-id="${folder.id}">
+                               <svg class="w-5 h-5 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                           </button>
+                      </div>
                  `;
                  foldersList.appendChild(li);
             });
             foldersList.querySelectorAll('.delete-folder-btn').forEach(btn => btn.addEventListener('click', handleDeleteFolderClick));
+            foldersList.querySelectorAll('.rename-folder-btn').forEach(btn => btn.addEventListener('click', handleRenameFolderClick));
         };
         
         const populateFolderSelect = () => {
@@ -1185,6 +1246,15 @@
             e.preventDefault();
             updateBookmark(editId.value, editName.value, editUrl.value);
         };
+        
+        const handleRenameFolderFormSubmit = (e) => {
+            e.preventDefault();
+            const id = renameFolderIdInput.value;
+            const name = renameFolderNameInput.value;
+            if (id && name) {
+                updateFolder(id, name);
+            }
+        };
 
         const attachBookmarkListeners = () => {
             const list = document.getElementById('bookmarks-list');
@@ -1206,6 +1276,13 @@
         const handleDeleteFolderClick = (e) => {
             const folderId = e.currentTarget.dataset.id;
             showConfirmModal(() => deleteFolder(folderId));
+        };
+
+        const handleRenameFolderClick = (e) => {
+            const { id, name } = e.currentTarget.dataset;
+            renameFolderIdInput.value = id;
+            renameFolderNameInput.value = name;
+            showModal(renameFolderModal);
         };
 
         const handlePreview = (e) => {
@@ -1254,6 +1331,8 @@
         cancelEditBtn.addEventListener('click', () => hideModal(editModal));
         addFolderForm.addEventListener('submit', handleAddFolderFormSubmit);
         cancelFolderBtn.addEventListener('click', () => hideModal(folderModal));
+        renameFolderForm.addEventListener('submit', handleRenameFolderFormSubmit);
+        cancelRenameBtn.addEventListener('click', () => hideModal(renameFolderModal));
         closeShareBtn.addEventListener('click', () => hideModal(shareModal));
         copyBtn.addEventListener('click', () => {
              shareUrlInput.select();
