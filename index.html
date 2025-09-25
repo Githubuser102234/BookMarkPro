@@ -498,8 +498,9 @@
                  <div class="app-card w-full max-w-sm text-center">
                      <h2 class="text-2xl font-semibold mb-4">Create Your Account</h2>
                      <form id="quick-signup-form" class="space-y-4">
-                         <input type="text" id="signup-user-id" class="input-base" placeholder="User ID" required>
+                         <input type="text" id="signup-username" class="input-base" placeholder="Username" required>
                          <input type="password" id="signup-password" class="input-base" placeholder="Password" required>
+                         <div id="signup-error" class="text-red-500 text-sm mt-2"></div>
                          <button type="submit" class="btn-base btn-primary w-full">Sign Up</button>
                      </form>
                      <p class="mt-4 text-sm text-gray-500">Already have an account? <a href="#/quick-signin" class="text-blue-500 hover:underline">Sign In</a></p>
@@ -514,8 +515,9 @@
                 <div class="app-card w-full max-w-sm text-center">
                     <h2 class="text-2xl font-semibold mb-4">Sign In to Your Account</h2>
                     <form id="quick-signin-form" class="space-y-4">
-                        <input type="text" id="signin-user-id" class="input-base" placeholder="User ID" required>
+                        <input type="text" id="signin-username" class="input-base" placeholder="Username" required>
                         <input type="password" id="signin-password" class="input-base" placeholder="Password" required>
+                        <div id="signin-error" class="text-red-500 text-sm mt-2"></div>
                         <button type="submit" class="btn-base btn-primary w-full">Sign In</button>
                     </form>
                     <p class="mt-4 text-sm text-gray-500">Don't have an account? <a href="#/quick-signup" class="text-blue-500 hover:underline">Sign Up</a></p>
@@ -600,24 +602,35 @@
                 showToast("Google sign-in failed.", 'error');
             }
         };
+        
+        const setUIError = (elementId, message) => {
+            const errorElement = document.getElementById(elementId);
+            if (errorElement) {
+                errorElement.textContent = message;
+                errorElement.style.display = message ? 'block' : 'none';
+            }
+        };
+
 
         const handleQuickSignup = async (e) => {
             e.preventDefault();
-            const quickUserId = document.getElementById('signup-user-id').value;
+            const username = document.getElementById('signup-username').value;
             const password = document.getElementById('signup-password').value;
 
-            // Check if user ID already exists
-            const q = query(collection(db, 'quick-sign-in-users'), where('userId', '==', quickUserId));
+            setUIError('signup-error', ''); // Clear previous errors
+
+            // Check if username already exists
+            const q = query(collection(db, 'quick-sign-in-users'), where('username', '==', username));
             const querySnapshot = await getDocs(q);
             if (!querySnapshot.empty) {
-                showToast("User ID already exists. Please choose another one.", 'error');
+                setUIError('signup-error', "Username already exists. Please choose another one.");
                 return;
             }
 
             try {
                 // Store the custom credentials in Firestore
                 await addDoc(collection(db, 'quick-sign-in-users'), {
-                    userId: quickUserId,
+                    username: username,
                     password: password, // In a real app, this should be a hashed password.
                     createdAt: new Date().toISOString()
                 });
@@ -627,18 +640,20 @@
                 showToast("Account created and signed in!");
             } catch (error) {
                 console.error("Quick sign up failed:", error);
-                showToast("Sign up failed. Please try again.", 'error');
+                setUIError('signup-error', "Sign up failed. Please try again.");
             }
         };
 
         const handleQuickSignin = async (e) => {
             e.preventDefault();
-            const quickUserId = document.getElementById('signin-user-id').value;
+            const username = document.getElementById('signin-username').value;
             const password = document.getElementById('signin-password').value;
+            
+            setUIError('signin-error', ''); // Clear previous errors
 
             try {
                 // Find a user with the matching credentials
-                const q = query(collection(db, 'quick-sign-in-users'), where('userId', '==', quickUserId), where('password', '==', password));
+                const q = query(collection(db, 'quick-sign-in-users'), where('username', '==', username), where('password', '==', password));
                 const querySnapshot = await getDocs(q);
 
                 if (!querySnapshot.empty) {
@@ -646,11 +661,11 @@
                     await signInAnonymously(auth);
                     showToast("Signed in successfully!");
                 } else {
-                    showToast("Invalid user ID or password.", 'error');
+                    setUIError('signin-error', "Invalid username or password.");
                 }
             } catch (error) {
                 console.error("Quick sign in failed:", error);
-                showToast("Sign in failed. Please try again.", 'error');
+                setUIError('signin-error', "Sign in failed. Please try again.");
             }
         };
 
