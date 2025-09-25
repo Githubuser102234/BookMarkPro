@@ -165,17 +165,14 @@
     <div class="container-app min-h-screen">
         <div class="flex justify-between items-center w-full max-w-2xl mb-8">
             <h1 id="main-title" class="text-4xl md:text-5xl font-bold"></h1>
-            <div class="flex items-center space-x-2">
-                <button id="logout-btn" class="hidden btn-base btn-secondary text-sm px-3 py-1">Log Out</button>
-                <button id="theme-toggle" class="p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors">
-                    <svg id="moon-icon" class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
-                    </svg>
-                    <svg id="sun-icon" class="w-6 h-6 hidden" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
-                    </svg>
-                </button>
-            </div>
+            <button id="theme-toggle" class="p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors">
+                <svg id="moon-icon" class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
+                </svg>
+                <svg id="sun-icon" class="w-6 h-6 hidden" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
+                </svg>
+            </button>
         </div>
 
         <!-- Main Content Area - Dynamic based on hash -->
@@ -249,8 +246,8 @@
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/12.3.0/firebase-app.js";
         import { getAnalytics } from "https://www.gstatic.com/firebasejs/12.3.0/firebase-analytics.js";
-        import { getAuth, onAuthStateChanged, GoogleAuthProvider, signInWithPopup, signInAnonymously, signOut } from "https://www.gstatic.com/firebasejs/12.3.0/firebase-auth.js";
-        import { getFirestore, doc, collection, onSnapshot, addDoc, updateDoc, deleteDoc, getDoc, setLogLevel, query, where, getDocs, writeBatch } from "https://www.gstatic.com/firebasejs/12.3.0/firebase-firestore.js";
+        import { getAuth, onAuthStateChanged, GoogleAuthProvider, signInWithPopup } from "https://www.gstatic.com/firebasejs/12.3.0/firebase-auth.js";
+        import { getFirestore, doc, collection, onSnapshot, addDoc, updateDoc, deleteDoc, getDoc, setLogLevel } from "https://www.gstatic.com/firebasejs/12.3.0/firebase-firestore.js";
 
         // Your web app's Firebase configuration
         const firebaseConfig = {
@@ -282,7 +279,6 @@
         const themeToggle = document.getElementById('theme-toggle');
         const sunIcon = document.getElementById('sun-icon');
         const moonIcon = document.getElementById('moon-icon');
-        const logoutBtn = document.getElementById('logout-btn');
 
         // Modal Elements
         const editModal = document.getElementById('edit-modal');
@@ -480,58 +476,15 @@
                 <div id="auth-section" class="app-card w-full max-w-sm text-center">
                     <h2 class="text-2xl font-semibold mb-4">Welcome Back</h2>
                     <p class="mb-6 text-gray-500">Sign in to manage your bookmarks and notes.</p>
-                    <div class="space-y-4">
-                        <button id="google-sign-in" class="btn-base btn-primary w-full flex items-center justify-center space-x-2">
-                            <svg class="w-5 h-5" viewBox="0 0 24 24" fill="currentColor">
-                                <path d="M12.24 10.24v4.48h6.4c-.64 2.88-3.04 4.96-6.4 4.96-3.84 0-6.96-3.12-6.96-6.96s3.12-6.96 6.96-6.96c2.24 0 4.16.96 5.52 2.32l3.36-3.36c-2.16-2.08-4.96-3.44-8.88-3.44-6.48 0-11.76 5.28-11.76 11.76s5.28 11.76 11.76 11.76c6.08 0 10.88-4.48 10.88-11.28 0-.8-.08-1.44-.16-2.08H12.24z"/>
-                            </svg>
-                            <span>Sign In with Google</span>
-                        </button>
-                        <p class="text-gray-400">or</p>
-                        <a href="#/quick-signin" class="btn-base btn-secondary w-full text-center block">Quick Sign In</a>
-                        <a href="#/quick-signup" class="btn-base btn-secondary w-full text-center block">Quick Sign Up</a>
-                    </div>
+                    <button id="google-sign-in" class="btn-base btn-primary w-full flex items-center justify-center space-x-2">
+                        <svg class="w-5 h-5" viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M12.24 10.24v4.48h6.4c-.64 2.88-3.04 4.96-6.4 4.96-3.84 0-6.96-3.12-6.96-6.96s3.12-6.96 6.96-6.96c2.24 0 4.16.96 5.52 2.32l3.36-3.36c-2.16-2.08-4.96-3.44-8.88-3.44-6.48 0-11.76 5.28-11.76 11.76s5.28 11.76 11.76 11.76c6.08 0 10.88-4.48 10.88-11.28 0-.8-.08-1.44-.16-2.08H12.24z"/>
+                        </svg>
+                        <span>Sign In with Google</span>
+                    </button>
                 </div>
             `;
             document.getElementById('google-sign-in').addEventListener('click', handleGoogleSignIn);
-        };
-
-        const renderQuickSignupView = () => {
-             mainTitle.textContent = "Quick Sign Up";
-             contentContainer.innerHTML = `
-                 <div class="app-card w-full max-w-sm text-center">
-                     <h2 class="text-2xl font-semibold mb-4">Create Your Account</h2>
-                     <form id="quick-signup-form" class="space-y-4">
-                         <input type="text" id="signup-username" class="input-base" placeholder="Username" required>
-                         <input type="password" id="signup-password" class="input-base" placeholder="Password" required>
-                         <div id="signup-error" class="text-red-500 text-sm mt-2 font-medium"></div>
-                         <button type="submit" id="signup-btn" class="btn-base btn-primary w-full flex items-center justify-center">
-                            Sign Up
-                         </button>
-                     </form>
-                     <p class="mt-4 text-sm text-gray-500">Already have an account? <a href="#/quick-signin" class="text-blue-500 hover:underline">Sign In</a></p>
-                 </div>
-             `;
-             document.getElementById('quick-signup-form').addEventListener('submit', handleQuickSignup);
-        };
-
-        const renderQuickSigninView = () => {
-            mainTitle.textContent = "Quick Sign In";
-            contentContainer.innerHTML = `
-                <div class="app-card w-full max-w-sm text-center">
-                    <h2 class="text-2xl font-semibold mb-4">Sign In to Your Account</h2>
-                    <form id="quick-signin-form" class="space-y-4">
-                        <input type="text" id="signin-username" class="input-base" placeholder="Username" required>
-                        <input type="password" id="signin-password" class="input-base" placeholder="Password" required>
-                        <div id="signin-error" class="text-red-500 text-sm mt-2 font-medium"></div>
-                        <button type="submit" id="signin-btn" class="btn-base btn-primary w-full flex items-center justify-center">
-                            Sign In
-                        </button>
-                    </form>
-                    <p class="mt-4 text-sm text-gray-500">Don't have an account? <a href="#/quick-signup" class="text-blue-500 hover:underline">Sign Up</a></p>
-                </div>
-            `;
-            document.getElementById('quick-signin-form').addEventListener('submit', handleQuickSignin);
         };
         
         const renderSharedView = async (type, id) => {
@@ -566,10 +519,6 @@
             if (route === 'share') {
                  // Correctly gets the type and ID from the path.
                  renderSharedView(path[2], path[3]);
-            } else if (route === 'quick-signin') {
-                renderQuickSigninView();
-            } else if (route === 'quick-signup') {
-                renderQuickSignupView();
             } else if (!userId) {
                 renderAuthView();
             } else if (route === 'notes' && id) {
@@ -578,11 +527,6 @@
                  renderNotesView();
             } else {
                  renderBookmarksView();
-            }
-            if (userId) {
-                logoutBtn.classList.remove('hidden');
-            } else {
-                logoutBtn.classList.add('hidden');
             }
         };
 
@@ -594,15 +538,8 @@
                 setLogLevel('debug');
 
                 onAuthStateChanged(auth, async (user) => {
-                    const previousUserId = userId;
                     userId = user ? user.uid : null;
                     isAuthReady = true;
-
-                    // If a user has just gone from anonymous to authenticated, transfer their data.
-                    if (user && user.isAnonymous && previousUserId) {
-                       await transferAnonymousData(previousUserId, user.uid);
-                    }
-                    
                     router();
                     globalLoadingOverlay.classList.add('hidden');
                 });
@@ -612,37 +549,6 @@
                 globalLoadingOverlay.classList.add('hidden');
             }
         };
-        
-        const transferAnonymousData = async (anonUserId, newUserId) => {
-            const batch = writeBatch(db);
-            const collectionsToMove = ['bookmarks', 'notes'];
-
-            for (const collectionName of collectionsToMove) {
-                const anonCollectionRef = collection(db, `users/${anonUserId}/${collectionName}`);
-                const newCollectionRef = collection(db, `users/${newUserId}/${collectionName}`);
-
-                try {
-                    const snapshot = await getDocs(anonCollectionRef);
-                    snapshot.forEach(docSnap => {
-                        const newDocRef = doc(newCollectionRef, docSnap.id);
-                        batch.set(newDocRef, docSnap.data());
-                        batch.delete(docSnap.ref);
-                    });
-                } catch (error) {
-                    console.error(`Failed to transfer ${collectionName} for anonymous user ${anonUserId}:`, error);
-                }
-            }
-
-            try {
-                await batch.commit();
-                console.log("Anonymous data transfer successful.");
-                showToast("Your data has been saved to your new account!");
-            } catch (error) {
-                console.error("Batch commit failed:", error);
-                showToast("Failed to save your data to the new account.", 'error');
-            }
-        };
-
 
         const handleGoogleSignIn = async () => {
             try {
@@ -651,118 +557,6 @@
             } catch (error) {
                 console.error("Google sign-in failed:", error);
                 showToast("Google sign-in failed.", 'error');
-            }
-        };
-        
-        const setUIError = (elementId, message) => {
-            const errorElement = document.getElementById(elementId);
-            if (errorElement) {
-                errorElement.textContent = message;
-                errorElement.style.display = message ? 'block' : 'none';
-            }
-        };
-
-        const handleQuickSignup = async (e) => {
-            e.preventDefault();
-            const signupBtn = document.getElementById('signup-btn');
-            signupBtn.innerHTML = `<div class="loader w-6 h-6 border-2"></div>`;
-            signupBtn.disabled = true;
-
-            const username = document.getElementById('signup-username').value;
-            const password = document.getElementById('signup-password').value;
-
-            setUIError('signup-error', ''); // Clear previous errors
-
-            try {
-                // Check if username already exists
-                const q = query(collection(db, 'quick-sign-in-users'), where('username', '==', username));
-                const querySnapshot = await getDocs(q);
-                if (!querySnapshot.empty) {
-                    setUIError('signup-error', "Username already exists. Please choose another one.");
-                    return;
-                }
-
-                // Sign in anonymously to link data to a Firebase Auth user
-                await signInAnonymously(auth);
-                const user = auth.currentUser;
-
-                // Store the custom credentials and the user's uid in Firestore
-                await setDoc(doc(db, 'quick-sign-in-users', user.uid), {
-                    username: username,
-                    password: password, // In a real app, this should be a hashed password.
-                    userId: user.uid,
-                    createdAt: new Date().toISOString()
-                });
-
-                showToast("Account created and signed in!");
-            } catch (error) {
-                console.error("Quick sign up failed:", error);
-                setUIError('signup-error', "Sign up failed. Please try again.");
-            } finally {
-                signupBtn.innerHTML = `Sign Up`;
-                signupBtn.disabled = false;
-            }
-        };
-
-        const handleQuickSignin = async (e) => {
-            e.preventDefault();
-            const signinBtn = document.getElementById('signin-btn');
-            signinBtn.innerHTML = `<div class="loader w-6 h-6 border-2"></div>`;
-            signinBtn.disabled = true;
-
-            const username = document.getElementById('signin-username').value;
-            const password = document.getElementById('signin-password').value;
-            
-            setUIError('signin-error', ''); // Clear previous errors
-
-            try {
-                // Find a user with the matching credentials
-                const q = query(collection(db, 'quick-sign-in-users'), where('username', '==', username), where('password', '==', password));
-                const querySnapshot = await getDocs(q);
-
-                if (!querySnapshot.empty) {
-                    const docData = querySnapshot.docs[0].data();
-                    const permanentUserId = docData.userId;
-
-                    const currentUser = auth.currentUser;
-                    if (currentUser && currentUser.isAnonymous) {
-                         // Transfer data from the current anonymous user to the permanent user
-                         await transferAnonymousData(currentUser.uid, permanentUserId);
-                         // Note: This won't change the current user's uid, but the data is moved.
-                         // For a seamless UX, we would re-authenticate the user, but for this demo, transferring is sufficient.
-                    } else if (!currentUser) {
-                        // If no user is signed in, sign in anonymously and data will be added to this anonymous user.
-                        await signInAnonymously(auth);
-                    } else {
-                        // User is already signed in (e.g. via Google), so do nothing.
-                    }
-
-                    showToast("Signed in successfully!");
-                    window.location.hash = '#/bookmarks';
-                } else {
-                    setUIError('signin-error', "Invalid username or password.");
-                }
-            } catch (error) {
-                console.error("Quick sign in failed:", error);
-                setUIError('signin-error', "Sign in failed. Please try again.");
-            } finally {
-                signinBtn.innerHTML = `Sign In`;
-                signinBtn.disabled = false;
-            }
-        };
-
-        const handleLogout = async () => {
-            try {
-                await signOut(auth);
-                showToast("Logged out successfully!");
-                // Clear any local state or caches if needed
-                bookmarksCache = [];
-                notesCache = [];
-                // Redirect to auth view
-                window.location.hash = '#/auth';
-            } catch (error) {
-                console.error("Logout failed:", error);
-                showToast("Failed to log out.", 'error');
             }
         };
 
@@ -1177,7 +971,6 @@
              previewIframe.src = 'about:blank';
         });
         themeToggle.addEventListener('click', toggleTheme);
-        logoutBtn.addEventListener('click', handleLogout);
         // New confirm modal listeners
         cancelDeleteBtn.addEventListener('click', () => hideModal(confirmModal));
         confirmDeleteBtn.addEventListener('click', () => {
@@ -1195,4 +988,3 @@
     </script>
 </body>
 </html>
-
