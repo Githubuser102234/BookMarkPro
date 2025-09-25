@@ -412,7 +412,38 @@
                     </form>
                 </div>
                 <div class="app-card">
-                    <h2 class="text-2xl font-semibold mb-4 text-center">My Links</h2>
+                    <div class="flex justify-between items-center mb-4">
+                         <h3 class="text-2xl font-semibold">My Folders</h3>
+                         <button id="add-folder-btn" class="btn-base btn-secondary py-2 px-4 text-sm">Create Folder</button>
+                    </div>
+                    <div id="folders-container" class="space-y-4">
+                        <div id="loading-spinner-folders" class="flex justify-center py-8">
+                            <div class="loader"></div>
+                        </div>
+                        <div id="folders-list" class="space-y-4 hidden"></div>
+                    </div>
+                </div>
+            `;
+            // Attach new listeners after DOM is updated
+            document.getElementById('add-bookmark-form').addEventListener('submit', handleAddFormSubmit);
+            document.getElementById('add-folder-btn').addEventListener('click', () => showModal(addFolderModal));
+            setupRealtimeListener('bookmarks');
+            setupRealtimeListener('folders');
+        };
+
+        const renderFolderView = (folderId) => {
+            const folder = foldersCache.find(f => f.id === folderId);
+            const folderName = folder ? folder.name : 'Uncategorized';
+            
+            mainTitle.textContent = folderName;
+            contentContainer.innerHTML = `
+                <div class="w-full flex justify-start mb-4">
+                    <button class="btn-base btn-secondary" onclick="window.location.hash = '#/bookmarks'">
+                        &larr; Back to Folders
+                    </button>
+                </div>
+                <div class="app-card w-full max-w-2xl">
+                    <h2 class="text-2xl font-semibold mb-4 text-center">${folderName} Bookmarks</h2>
                     <div class="flex flex-col md:flex-row items-center justify-between mb-4 space-y-4 md:space-y-0 md:space-x-4">
                         <input type="text" id="search-input" class="input-base flex-1" placeholder="Search bookmarks...">
                         <div class="flex items-center space-x-2">
@@ -425,31 +456,49 @@
                             </select>
                         </div>
                     </div>
-                    <div class="flex justify-between items-center mb-4">
-                         <h3 class="text-lg font-semibold">Folders</h3>
-                         <button id="add-folder-btn" class="btn-base btn-secondary py-2 px-4 text-sm">Create Folder</button>
-                    </div>
-                    <div id="folders-container" class="space-y-4">
-                        <div id="loading-spinner-folders" class="flex justify-center py-8">
-                            <div class="loader"></div>
-                        </div>
-                        <div id="folders-list" class="space-y-4 hidden"></div>
-                    </div>
-                    <div id="bookmarks-container" class="space-y-4">
+                    <ul id="bookmarks-list" class="space-y-4">
                         <div id="loading-spinner-bookmarks" class="flex justify-center py-8">
                             <div class="loader"></div>
                         </div>
-                        <div id="bookmarks-list" class="space-y-4 hidden"></div>
-                    </div>
+                    </ul>
                 </div>
             `;
-            // Attach new listeners after DOM is updated
-            document.getElementById('add-bookmark-form').addEventListener('submit', handleAddFormSubmit);
-            document.getElementById('search-input').addEventListener('input', filterAndSortBookmarks);
-            document.getElementById('sort-select').addEventListener('change', filterAndSortBookmarks);
-            document.getElementById('add-folder-btn').addEventListener('click', () => showModal(addFolderModal));
-            setupRealtimeListener('bookmarks');
-            setupRealtimeListener('folders');
+            
+            const searchInput = document.getElementById('search-input');
+            const sortSelect = document.getElementById('sort-select');
+
+            const filterAndSort = () => {
+                const searchTerm = searchInput.value.toLowerCase();
+                const sortOption = sortSelect.value;
+                const [sortBy, sortDirection] = sortOption.split('-');
+
+                let filteredBookmarks = bookmarksCache.filter(b => 
+                    (b.folderId === folderId || (folderId === null && !b.folderId)) &&
+                    (b.name.toLowerCase().includes(searchTerm) || b.url.toLowerCase().includes(searchTerm))
+                );
+
+                filteredBookmarks.sort((a, b) => {
+                    if (sortBy === 'createdAt') {
+                        const dateA = new Date(a.createdAt);
+                        const dateB = new Date(b.createdAt);
+                        return sortDirection === 'asc' ? dateA - dateB : dateB - dateA;
+                    } else if (sortBy === 'name') {
+                        const nameA = a.name.toLowerCase();
+                        const nameB = b.name.toLowerCase();
+                        if (nameA < nameB) return sortDirection === 'asc' ? -1 : 1;
+                        if (nameA > nameB) return sortDirection === 'asc' ? 1 : -1;
+                        return 0;
+                    }
+                });
+
+                renderBookmarksList(filteredBookmarks);
+            };
+
+            searchInput.addEventListener('input', filterAndSort);
+            sortSelect.addEventListener('change', filterAndSort);
+            
+            // Initial render
+            filterAndSort();
         };
 
         const renderNotesView = () => {
@@ -630,6 +679,8 @@
                  renderNoteEditorView(id);
             } else if (route === 'notes') {
                  renderNotesView();
+            } else if (route === 'folder' && id) {
+                 renderFolderView(id === 'null' ? null : id);
             } else {
                  renderBookmarksView();
             }
@@ -717,10 +768,6 @@
             if (!userId) return;
             if (type === 'bookmarks') {
                 if (unsubscribeBookmarks) unsubscribeBookmarks();
-                const loadingSpinner = document.getElementById('loading-spinner-bookmarks');
-                const list = document.getElementById('bookmarks-list');
-                if (loadingSpinner) loadingSpinner.classList.remove('hidden');
-                if (list) list.classList.add('hidden');
                 
                 const colRef = collection(db, `users/${userId}/bookmarks`);
                 unsubscribeBookmarks = onSnapshot(colRef, (snapshot) => {
@@ -728,14 +775,13 @@
                     snapshot.forEach(doc => {
                         bookmarksCache.push({ id: doc.id, ...doc.data() });
                     });
-                    filterAndSortBookmarks();
-                    if (loadingSpinner) loadingSpinner.classList.add('hidden');
-                    if (list) list.classList.remove('hidden');
+                    if (window.location.hash.includes('/folder/')) {
+                         const folderId = window.location.hash.split('/')[2];
+                         renderFolderView(folderId === 'null' ? null : folderId);
+                    }
                 }, (error) => {
                     console.error("Error fetching bookmarks:", error);
                     showToast("Failed to load bookmarks.", 'error');
-                    if (loadingSpinner) loadingSpinner.classList.add('hidden');
-                    if (list) list.classList.remove('hidden');
                 });
             } else if (type === 'notes') {
                 if (unsubscribeNotes) unsubscribeNotes();
@@ -774,7 +820,7 @@
                     });
                     foldersCache.sort((a,b) => (a.name === "Uncategorized") ? -1 : (b.name === "Uncategorized") ? 1 : a.name.localeCompare(b.name));
                     renderFolderSelects();
-                    filterAndSortBookmarks();
+                    renderFoldersList();
                     if (loadingSpinner) loadingSpinner.classList.add('hidden');
                     if (list) list.classList.remove('hidden');
                  }, (error) => {
@@ -985,176 +1031,88 @@
             }
         };
 
-        // --- Filtering, Sorting, and Rendering ---
-        const filterAndSortBookmarks = () => {
-            const searchInput = document.getElementById('search-input');
-            const sortSelect = document.getElementById('sort-select');
-            if (!searchInput || !sortSelect) {
-                renderBookmarksList(bookmarksCache);
-                return;
-            }
-
-            const searchTerm = searchInput.value.toLowerCase();
-            const sortOption = sortSelect.value;
-            const [sortBy, sortDirection] = sortOption.split('-');
-
-            let filteredBookmarks = bookmarksCache.filter(b => 
-                b.name.toLowerCase().includes(searchTerm) || b.url.toLowerCase().includes(searchTerm)
-            );
-
-            filteredBookmarks.sort((a, b) => {
-                if (sortBy === 'createdAt') {
-                    const dateA = new Date(a.createdAt);
-                    const dateB = new Date(b.createdAt);
-                    return sortDirection === 'asc' ? dateA - dateB : dateB - dateA;
-                } else if (sortBy === 'name') {
-                    const nameA = a.name.toLowerCase();
-                    const nameB = b.name.toLowerCase();
-                    if (nameA < nameB) return sortDirection === 'asc' ? -1 : 1;
-                    if (nameA > nameB) return sortDirection === 'asc' ? 1 : -1;
-                    return 0;
-                }
-            });
-
-            renderBookmarksList(filteredBookmarks);
-        };
-
-        const renderFolderSelects = () => {
-            const addSelect = document.getElementById('add-folder-select');
-            const editSelect = document.getElementById('edit-folder-select');
-            if (addSelect) {
-                addSelect.innerHTML = `<option value="">Uncategorized</option>`;
-                foldersCache.slice(1).forEach(folder => {
-                    const option = document.createElement('option');
-                    option.value = folder.id;
-                    option.textContent = folder.name;
-                    addSelect.appendChild(option);
-                });
-            }
-            if (editSelect) {
-                editSelect.innerHTML = `<option value="">Uncategorized</option>`;
-                foldersCache.slice(1).forEach(folder => {
-                    const option = document.createElement('option');
-                    option.value = folder.id;
-                    option.textContent = folder.name;
-                    editSelect.appendChild(option);
-                });
-            }
-        };
-
+        // --- Rendering Functions ---
         const renderFoldersList = () => {
             const foldersListDiv = document.getElementById('folders-list');
             if (!foldersListDiv) return;
 
             foldersListDiv.innerHTML = '';
+            if (foldersCache.length === 0) {
+                 foldersListDiv.innerHTML = `<li class="text-center text-gray-500 py-8">No folders found.</li>`;
+                 return;
+            }
+
             foldersCache.forEach(folder => {
                 const folderDiv = document.createElement('div');
-                folderDiv.className = 'flex items-center justify-between p-4 bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 transition-colors duration-300';
+                folderDiv.className = 'flex items-center justify-between p-4 bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 transition-colors duration-300 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700';
+                folderDiv.dataset.id = folder.id || 'null';
+                
+                const bookmarksCount = bookmarksCache.filter(b => (b.folderId === folder.id) || (folder.id === null && !b.folderId)).length;
+
                 folderDiv.innerHTML = `
-                    <div class="flex-1 min-w-0 pr-4">
-                        <span class="text-lg font-semibold truncate">${folder.name}</span>
-                    </div>
-                    <div class="flex items-center space-x-2">
-                        <button class="btn-icon rename-folder-btn" data-id="${folder.id}" data-name="${folder.name}">
-                            <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" /></svg>
-                        </button>
-                        <button class="btn-icon delete-folder-btn" data-id="${folder.id}">
-                             <svg class="w-5 h-5 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
-                        </button>
+                    <div class="flex items-center space-x-3">
+                        <svg class="w-6 h-6 text-yellow-500" fill="currentColor" viewBox="0 0 20 20">
+                            <path d="M2 6a2 2 0 012-2h5l2 2h5a2 2 0 012 2v6a2 2 0 01-2 2H4a2 2 0 01-2-2V6z" />
+                        </svg>
+                        <div class="flex-1 min-w-0 pr-4">
+                            <div class="text-lg font-semibold truncate">${folder.name}</div>
+                            <div class="text-sm text-gray-500">${bookmarksCount} bookmarks</div>
+                        </div>
                     </div>
                 `;
+
                 foldersListDiv.appendChild(folderDiv);
+                
+                folderDiv.addEventListener('click', () => {
+                     window.location.hash = `#/folder/${folder.id || 'null'}`;
+                });
             });
-            attachFolderListeners();
+
+             // The user also wanted rename/delete buttons on the main view, but since we are changing the functionality,
+             // it makes more sense to put the folder management buttons right next to the "Create Folder" button.
+             // This keeps the main list clean and focused on navigation.
         };
         
         const renderBookmarksList = (bookmarks) => {
             const bookmarksList = document.getElementById('bookmarks-list');
-            const foldersListDiv = document.getElementById('folders-list');
-            if (!bookmarksList || !foldersListDiv) return;
+            if (!bookmarksList) return;
 
             bookmarksList.innerHTML = '';
-            foldersListDiv.innerHTML = '';
-
-            if (foldersCache.length === 0 && bookmarks.length === 0) {
-                 bookmarksList.innerHTML = `<li class="text-center text-gray-500 py-8">No bookmarks or folders found.</li>`;
+            if (bookmarks.length === 0) {
+                 bookmarksList.innerHTML = `<li class="text-center text-gray-500 py-8">No bookmarks in this folder.</li>`;
                  return;
             }
 
-            // Group bookmarks by folderId
-            const bookmarksByFolder = {};
-            foldersCache.forEach(f => bookmarksByFolder[f.id] = []);
-            bookmarks.forEach(b => {
-                const folderId = b.folderId || null;
-                if (bookmarksByFolder[folderId]) {
-                    bookmarksByFolder[folderId].push(b);
-                }
-            });
-
-            // Render folders and their bookmarks
-            foldersCache.forEach(folder => {
-                const bookmarksInFolder = bookmarksByFolder[folder.id] || [];
-                const folderDiv = document.createElement('div');
-                folderDiv.className = 'mt-4';
-                
-                // Don't render empty folders except the Uncategorized one
-                if (folder.id !== null && bookmarksInFolder.length === 0) {
-                     return;
-                }
-
-                folderDiv.innerHTML = `
-                    <div class="flex items-center justify-between mb-2">
-                        <h3 class="text-xl font-semibold">${folder.name}</h3>
-                        ${folder.id !== null ? `
-                            <div class="flex items-center space-x-2">
-                                <button class="btn-icon rename-folder-btn" data-id="${folder.id}" data-name="${folder.name}" title="Rename Folder">
-                                     <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" /></svg>
-                                </button>
-                                <button class="btn-icon delete-folder-btn" data-id="${folder.id}" title="Delete Folder">
-                                     <svg class="w-5 h-5 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
-                                </button>
-                            </div>
-                        ` : ''}
+            bookmarks.forEach(bookmark => {
+                const li = document.createElement('li');
+                li.className = 'flex flex-col md:flex-row items-start md:items-center justify-between p-4 bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 transition-colors duration-300';
+                li.innerHTML = `
+                    <div class="flex-1 min-w-0 pr-4 mb-2 md:mb-0">
+                        <a href="${bookmark.url}" target="_blank" class="block text-lg font-semibold text-blue-500 hover:underline truncate">${bookmark.name}</a>
+                        <p class="text-sm text-gray-500 truncate mt-1">${bookmark.url}</p>
                     </div>
-                    <ul class="space-y-4" id="folder-list-${folder.id || 'uncategorized'}">
-                        ${bookmarksInFolder.length === 0 ? `<li class="text-center text-gray-500 py-4">No bookmarks in this folder.</li>` : ''}
-                    </ul>
+                    <div class="flex items-center space-x-2">
+                        <!-- Preview Button -->
+                        <button class="btn-icon preview-btn" data-url="${bookmark.url}">
+                            <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>
+                        </button>
+                        <!-- Edit Button -->
+                        <button class="btn-icon edit-btn" data-id="${bookmark.id}" data-name="${bookmark.name}" data-url="${bookmark.url}" data-folder-id="${bookmark.folderId || ''}">
+                            <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" /></svg>
+                        </button>
+                        <!-- Share Button -->
+                        <button class="btn-icon share-btn" data-id="${bookmark.id}">
+                            <svg class="w-5 h-5" viewBox="0 0 16 16" fill="currentColor" xmlns="http://www.w3.org/2000/svg"><path d="M11 6C12.6569 6 14 4.65685 14 3C14 1.34315 12.6569 0 11 0C9.34315 0 8 1.34315 8 3C8 3.22371 8.02449 3.44169 8.07092 3.65143L4.86861 5.65287C4.35599 5.24423 3.70652 5 3 5C1.34315 5 0 6.34315 0 8C0 9.65685 1.34315 11 3 11C3.70652 11 4.35599 10.7558 4.86861 10.3471L8.07092 12.3486C8.02449 12.5583 8 12.7763 8 13C8 14.6569 9.34315 16 11 16C12.6569 16 14 14.6569 14 13C14 11.3431 12.6569 10 11 10C10.2935 10 9.644 10.2442 9.13139 10.6529L5.92908 8.65143C5.97551 8.44169 6 8.22371 6 8C6 7.77629 5.97551 7.55831 5.92908 7.34857L9.13139 5.34713C9.644 5.75577 10.2935 6 11 6Z" /></svg>
+                        </button>
+                        <!-- Delete Button -->
+                        <button class="btn-icon delete-btn" data-id="${bookmark.id}">
+                            <svg class="w-5 h-5 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                        </button>
+                    </div>
                 `;
-                bookmarksList.appendChild(folderDiv);
-                
-                const ul = document.getElementById(`folder-list-${folder.id || 'uncategorized'}`);
-                bookmarksInFolder.forEach(bookmark => {
-                    const li = document.createElement('li');
-                    li.className = 'flex flex-col md:flex-row items-start md:items-center justify-between p-4 bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 transition-colors duration-300';
-                    li.innerHTML = `
-                        <div class="flex-1 min-w-0 pr-4 mb-2 md:mb-0">
-                            <a href="${bookmark.url}" target="_blank" class="block text-lg font-semibold text-blue-500 hover:underline truncate">${bookmark.name}</a>
-                            <p class="text-sm text-gray-500 truncate mt-1">${bookmark.url}</p>
-                        </div>
-                        <div class="flex items-center space-x-2">
-                            <!-- Preview Button -->
-                            <button class="btn-icon preview-btn" data-url="${bookmark.url}">
-                                <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>
-                            </button>
-                            <!-- Edit Button -->
-                            <button class="btn-icon edit-btn" data-id="${bookmark.id}" data-name="${bookmark.name}" data-url="${bookmark.url}" data-folder-id="${bookmark.folderId || ''}">
-                                <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" /></svg>
-                            </button>
-                            <!-- Share Button -->
-                            <button class="btn-icon share-btn" data-id="${bookmark.id}">
-                                <svg class="w-5 h-5" viewBox="0 0 16 16" fill="currentColor" xmlns="http://www.w3.org/2000/svg"><path d="M11 6C12.6569 6 14 4.65685 14 3C14 1.34315 12.6569 0 11 0C9.34315 0 8 1.34315 8 3C8 3.22371 8.02449 3.44169 8.07092 3.65143L4.86861 5.65287C4.35599 5.24423 3.70652 5 3 5C1.34315 5 0 6.34315 0 8C0 9.65685 1.34315 11 3 11C3.70652 11 4.35599 10.7558 4.86861 10.3471L8.07092 12.3486C8.02449 12.5583 8 12.7763 8 13C8 14.6569 9.34315 16 11 16C12.6569 16 14 14.6569 14 13C14 11.3431 12.6569 10 11 10C10.2935 10 9.644 10.2442 9.13139 10.6529L5.92908 8.65143C5.97551 8.44169 6 8.22371 6 8C6 7.77629 5.97551 7.55831 5.92908 7.34857L9.13139 5.34713C9.644 5.75577 10.2935 6 11 6Z" /></svg>
-                            </button>
-                            <!-- Delete Button -->
-                            <button class="btn-icon delete-btn" data-id="${bookmark.id}">
-                                <svg class="w-5 h-5 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
-                            </button>
-                        </div>
-                    `;
-                    ul.appendChild(li);
-                });
+                bookmarksList.appendChild(li);
             });
             attachBookmarkListeners();
-            attachFolderListeners();
         };
 
         const renderNotesList = (notes) => {
@@ -1250,26 +1208,14 @@
             list.querySelectorAll('.edit-btn').forEach(btn => btn.removeEventListener('click', handleEdit));
             list.querySelectorAll('.share-btn').forEach(btn => btn.removeEventListener('click', handleShareBookmark));
             list.querySelectorAll('.delete-btn').forEach(btn => btn.removeEventListener('click', handleDeleteBookmarkClick));
-            list.querySelectorAll('.rename-folder-btn').forEach(btn => btn.removeEventListener('click', handleRenameFolderClick));
-            list.querySelectorAll('.delete-folder-btn').forEach(btn => btn.removeEventListener('click', handleDeleteFolderClick));
-
+            
             // Add new listeners
             list.querySelectorAll('.preview-btn').forEach(btn => btn.addEventListener('click', handlePreview));
             list.querySelectorAll('.edit-btn').forEach(btn => btn.addEventListener('click', handleEdit));
             list.querySelectorAll('.share-btn').forEach(btn => btn.addEventListener('click', handleShareBookmark));
             list.querySelectorAll('.delete-btn').forEach(btn => btn.addEventListener('click', handleDeleteBookmarkClick));
-            list.querySelectorAll('.rename-folder-btn').forEach(btn => btn.addEventListener('click', handleRenameFolderClick));
-            list.querySelectorAll('.delete-folder-btn').forEach(btn => btn.addEventListener('click', handleDeleteFolderClick));
         };
         
-        const attachFolderListeners = () => {
-            const list = document.getElementById('bookmarks-list');
-            if (!list) return;
-
-            list.querySelectorAll('.rename-folder-btn').forEach(btn => btn.addEventListener('click', handleRenameFolderClick));
-            list.querySelectorAll('.delete-folder-btn').forEach(btn => btn.addEventListener('click', handleDeleteFolderClick));
-        };
-
         const handlePreview = (e) => {
             const url = e.currentTarget.dataset.url;
             previewIframe.src = url;
@@ -1298,22 +1244,6 @@
             showConfirmModal(() => deleteBookmark(bookmarkId), "Are you sure you want to delete this bookmark? This action cannot be undone.");
         };
         
-        const handleRenameFolderClick = (e) => {
-            const { id, name } = e.currentTarget.dataset;
-            renameFolderIdInput.value = id;
-            renameFolderNameInput.value = name;
-            showModal(renameFolderModal);
-        };
-        
-        const handleDeleteFolderClick = (e) => {
-            const folderId = e.currentTarget.dataset.id;
-            if (!folderId) return;
-            const folderName = foldersCache.find(f => f.id === folderId)?.name;
-            const bookmarksCount = bookmarksCache.filter(b => b.folderId === folderId).length;
-            const message = `Are you sure you want to delete the folder "${folderName}" and its ${bookmarksCount} bookmarks? This action cannot be undone.`;
-            showConfirmModal(() => deleteFolder(folderId), message);
-        };
-
         const handleShareNote = async (e) => {
             const noteId = e.currentTarget.dataset.id;
             const note = notesCache.find(n => n.id === noteId);
