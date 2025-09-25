@@ -165,7 +165,8 @@
     <div class="container-app min-h-screen">
         <div class="flex justify-between items-center w-full max-w-2xl mb-8">
             <h1 id="main-title" class="text-4xl md:text-5xl font-bold"></h1>
-            <div class="flex space-x-2">
+            <div class="flex items-center space-x-2">
+                <button id="logout-btn" class="hidden btn-base btn-secondary text-sm px-3 py-1">Log Out</button>
                 <button id="theme-toggle" class="p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors">
                     <svg id="moon-icon" class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
@@ -174,7 +175,6 @@
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
                     </svg>
                 </button>
-                 <button id="logout-button" class="btn-base btn-secondary hidden">Log Out</button>
             </div>
         </div>
 
@@ -282,7 +282,7 @@
         const themeToggle = document.getElementById('theme-toggle');
         const sunIcon = document.getElementById('sun-icon');
         const moonIcon = document.getElementById('moon-icon');
-        const logoutButton = document.getElementById('logout-button');
+        const logoutBtn = document.getElementById('logout-btn');
 
         // Modal Elements
         const editModal = document.getElementById('edit-modal');
@@ -562,12 +562,6 @@
             const path = window.location.hash.slice(1).split('/');
             const route = path[1] || 'bookmarks';
             const id = path[2];
-            
-            if (userId) {
-                logoutButton.classList.remove('hidden');
-            } else {
-                logoutButton.classList.add('hidden');
-            }
 
             if (route === 'share') {
                  // Correctly gets the type and ID from the path.
@@ -585,6 +579,11 @@
             } else {
                  renderBookmarksView();
             }
+            if (userId) {
+                logoutBtn.classList.remove('hidden');
+            } else {
+                logoutBtn.classList.add('hidden');
+            }
         };
 
         // --- Firebase Initialization and Auth ---
@@ -595,8 +594,15 @@
                 setLogLevel('debug');
 
                 onAuthStateChanged(auth, async (user) => {
+                    const previousUserId = userId;
                     userId = user ? user.uid : null;
                     isAuthReady = true;
+
+                    // If a user has just gone from anonymous to authenticated, transfer their data.
+                    if (user && user.isAnonymous && previousUserId) {
+                       await transferAnonymousData(previousUserId, user.uid);
+                    }
+                    
                     router();
                     globalLoadingOverlay.classList.add('hidden');
                 });
@@ -606,6 +612,37 @@
                 globalLoadingOverlay.classList.add('hidden');
             }
         };
+        
+        const transferAnonymousData = async (anonUserId, newUserId) => {
+            const batch = writeBatch(db);
+            const collectionsToMove = ['bookmarks', 'notes'];
+
+            for (const collectionName of collectionsToMove) {
+                const anonCollectionRef = collection(db, `users/${anonUserId}/${collectionName}`);
+                const newCollectionRef = collection(db, `users/${newUserId}/${collectionName}`);
+
+                try {
+                    const snapshot = await getDocs(anonCollectionRef);
+                    snapshot.forEach(docSnap => {
+                        const newDocRef = doc(newCollectionRef, docSnap.id);
+                        batch.set(newDocRef, docSnap.data());
+                        batch.delete(docSnap.ref);
+                    });
+                } catch (error) {
+                    console.error(`Failed to transfer ${collectionName} for anonymous user ${anonUserId}:`, error);
+                }
+            }
+
+            try {
+                await batch.commit();
+                console.log("Anonymous data transfer successful.");
+                showToast("Your data has been saved to your new account!");
+            } catch (error) {
+                console.error("Batch commit failed:", error);
+                showToast("Failed to save your data to the new account.", 'error');
+            }
+        };
+
 
         const handleGoogleSignIn = async () => {
             try {
@@ -616,16 +653,24 @@
                 showToast("Google sign-in failed.", 'error');
             }
         };
+        
+        const setUIError = (elementId, message) => {
+            const errorElement = document.getElementById(elementId);
+            if (errorElement) {
+                errorElement.textContent = message;
+                errorElement.style.display = message ? 'block' : 'none';
+            }
+        };
 
         const handleQuickSignup = async (e) => {
             e.preventDefault();
             const signupBtn = document.getElementById('signup-btn');
             signupBtn.innerHTML = `<div class="loader w-6 h-6 border-2"></div>`;
             signupBtn.disabled = true;
-            
+
             const username = document.getElementById('signup-username').value;
             const password = document.getElementById('signup-password').value;
-            
+
             setUIError('signup-error', ''); // Clear previous errors
 
             try {
@@ -636,16 +681,16 @@
                     setUIError('signup-error', "Username already exists. Please choose another one.");
                     return;
                 }
-                
-                // Sign in anonymously to get a new UID and link to it
-                await signInAnonymously(auth);
-                const currentUserId = auth.currentUser.uid;
 
-                // Store the custom credentials and the new user ID in Firestore
-                await addDoc(collection(db, 'quick-sign-in-users'), {
+                // Sign in anonymously to link data to a Firebase Auth user
+                await signInAnonymously(auth);
+                const user = auth.currentUser;
+
+                // Store the custom credentials and the user's uid in Firestore
+                await setDoc(doc(db, 'quick-sign-in-users', user.uid), {
                     username: username,
                     password: password, // In a real app, this should be a hashed password.
-                    userId: currentUserId,
+                    userId: user.uid,
                     createdAt: new Date().toISOString()
                 });
 
@@ -676,43 +721,24 @@
                 const querySnapshot = await getDocs(q);
 
                 if (!querySnapshot.empty) {
-                    const userData = querySnapshot.docs[0].data();
-                    const storedUserId = userData.userId;
-                    const currentAnonymousId = auth.currentUser ? auth.currentUser.uid : null;
-                    
-                    if (currentAnonymousId !== storedUserId) {
-                        // Data migration logic: copy data from the old UID to the new anonymous UID
-                        // This handles cases where the user is on a new device or cleared cache
-                        const oldBookmarksRef = collection(db, `users/${storedUserId}/bookmarks`);
-                        const oldNotesRef = collection(db, `users/${storedUserId}/notes`);
+                    const docData = querySnapshot.docs[0].data();
+                    const permanentUserId = docData.userId;
 
-                        const newBookmarksRef = collection(db, `users/${currentAnonymousId}/bookmarks`);
-                        const newNotesRef = collection(db, `users/${currentAnonymousId}/notes`);
-
-                        const batch = writeBatch(db);
-
-                        // Copy bookmarks
-                        const bookmarksSnapshot = await getDocs(oldBookmarksRef);
-                        bookmarksSnapshot.forEach(doc => {
-                            const newDocRef = doc(newBookmarksRef, doc.id); // Use the same doc ID to prevent duplicates if signed in on multiple devices
-                            batch.set(newDocRef, doc.data());
-                        });
-
-                        // Copy notes
-                        const notesSnapshot = await getDocs(oldNotesRef);
-                        notesSnapshot.forEach(doc => {
-                            const newDocRef = doc(newNotesRef, doc.id);
-                            batch.set(newDocRef, doc.data());
-                        });
-
-                        await batch.commit();
-                        showToast("Data synced successfully!");
+                    const currentUser = auth.currentUser;
+                    if (currentUser && currentUser.isAnonymous) {
+                         // Transfer data from the current anonymous user to the permanent user
+                         await transferAnonymousData(currentUser.uid, permanentUserId);
+                         // Note: This won't change the current user's uid, but the data is moved.
+                         // For a seamless UX, we would re-authenticate the user, but for this demo, transferring is sufficient.
+                    } else if (!currentUser) {
+                        // If no user is signed in, sign in anonymously and data will be added to this anonymous user.
+                        await signInAnonymously(auth);
+                    } else {
+                        // User is already signed in (e.g. via Google), so do nothing.
                     }
-                    
-                    // The user is already signed in anonymously from the initial app load,
-                    // so we just need to ensure the routing reflects their logged-in state.
-                    await signInAnonymously(auth);
+
                     showToast("Signed in successfully!");
+                    window.location.hash = '#/bookmarks';
                 } else {
                     setUIError('signin-error', "Invalid username or password.");
                 }
@@ -727,17 +753,18 @@
 
         const handleLogout = async () => {
             try {
-                if (unsubscribeBookmarks) unsubscribeBookmarks();
-                if (unsubscribeNotes) unsubscribeNotes();
                 await signOut(auth);
-                window.location.hash = ''; // Go back to the authentication screen
                 showToast("Logged out successfully!");
+                // Clear any local state or caches if needed
+                bookmarksCache = [];
+                notesCache = [];
+                // Redirect to auth view
+                window.location.hash = '#/auth';
             } catch (error) {
                 console.error("Logout failed:", error);
-                showToast("Logout failed.", 'error');
+                showToast("Failed to log out.", 'error');
             }
         };
-
 
         // --- Data Fetching and Management ---
         const setupRealtimeListener = (type) => {
@@ -1150,7 +1177,7 @@
              previewIframe.src = 'about:blank';
         });
         themeToggle.addEventListener('click', toggleTheme);
-        logoutButton.addEventListener('click', handleLogout);
+        logoutBtn.addEventListener('click', handleLogout);
         // New confirm modal listeners
         cancelDeleteBtn.addEventListener('click', () => hideModal(confirmModal));
         confirmDeleteBtn.addEventListener('click', () => {
