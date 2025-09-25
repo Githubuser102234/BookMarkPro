@@ -165,14 +165,17 @@
     <div class="container-app min-h-screen">
         <div class="flex justify-between items-center w-full max-w-2xl mb-8">
             <h1 id="main-title" class="text-4xl md:text-5xl font-bold"></h1>
-            <button id="theme-toggle" class="p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors">
-                <svg id="moon-icon" class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
-                </svg>
-                <svg id="sun-icon" class="w-6 h-6 hidden" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
-                </svg>
-            </button>
+            <div class="flex items-center space-x-4">
+                <button id="logout-btn" class="btn-base btn-secondary hidden">Log Out</button>
+                <button id="theme-toggle" class="p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors">
+                    <svg id="moon-icon" class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
+                    </svg>
+                    <svg id="sun-icon" class="w-6 h-6 hidden" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
+                    </svg>
+                </button>
+            </div>
         </div>
 
         <!-- Main Content Area - Dynamic based on hash -->
@@ -246,7 +249,7 @@
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/12.3.0/firebase-app.js";
         import { getAnalytics } from "https://www.gstatic.com/firebasejs/12.3.0/firebase-analytics.js";
-        import { getAuth, onAuthStateChanged, GoogleAuthProvider, signInWithPopup } from "https://www.gstatic.com/firebasejs/12.3.0/firebase-auth.js";
+        import { getAuth, onAuthStateChanged, GoogleAuthProvider, signInWithPopup, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut } from "https://www.gstatic.com/firebasejs/12.3.0/firebase-auth.js";
         import { getFirestore, doc, collection, onSnapshot, addDoc, updateDoc, deleteDoc, getDoc, setLogLevel } from "https://www.gstatic.com/firebasejs/12.3.0/firebase-firestore.js";
 
         // Your web app's Firebase configuration
@@ -279,6 +282,7 @@
         const themeToggle = document.getElementById('theme-toggle');
         const sunIcon = document.getElementById('sun-icon');
         const moonIcon = document.getElementById('moon-icon');
+        const logoutBtn = document.getElementById('logout-btn');
 
         // Modal Elements
         const editModal = document.getElementById('edit-modal');
@@ -470,21 +474,50 @@
             }
         };
 
-        const renderAuthView = () => {
-            mainTitle.textContent = "Welcome Back";
+        const renderSignInView = () => {
+            mainTitle.textContent = "Sign In";
             contentContainer.innerHTML = `
-                <div id="auth-section" class="app-card w-full max-w-sm text-center">
-                    <h2 class="text-2xl font-semibold mb-4">Welcome Back</h2>
-                    <p class="mb-6 text-gray-500">Sign in to manage your bookmarks and notes.</p>
-                    <button id="google-sign-in" class="btn-base btn-primary w-full flex items-center justify-center space-x-2">
+                <div class="app-card w-full max-w-sm">
+                    <h2 class="text-2xl font-semibold mb-4 text-center">Sign In</h2>
+                    <form id="signin-form" class="space-y-4">
+                        <input type="email" id="signin-email" class="input-base" placeholder="Email" required>
+                        <input type="password" id="signin-password" class="input-base" placeholder="Password" required>
+                        <button type="submit" class="btn-base btn-primary w-full">Sign In</button>
+                    </form>
+                    <div class="mt-4 text-center text-gray-500">
+                        <p>Or sign in with</p>
+                    </div>
+                    <button id="google-sign-in" class="btn-base btn-secondary w-full flex items-center justify-center space-x-2 mt-2">
                         <svg class="w-5 h-5" viewBox="0 0 24 24" fill="currentColor">
                             <path d="M12.24 10.24v4.48h6.4c-.64 2.88-3.04 4.96-6.4 4.96-3.84 0-6.96-3.12-6.96-6.96s3.12-6.96 6.96-6.96c2.24 0 4.16.96 5.52 2.32l3.36-3.36c-2.16-2.08-4.96-3.44-8.88-3.44-6.48 0-11.76 5.28-11.76 11.76s5.28 11.76 11.76 11.76c6.08 0 10.88-4.48 10.88-11.28 0-.8-.08-1.44-.16-2.08H12.24z"/>
                         </svg>
                         <span>Sign In with Google</span>
                     </button>
+                    <p class="mt-4 text-center text-sm text-gray-500">
+                        Don't have an account? <a href="#/signup" class="text-blue-500 hover:underline">Sign Up</a>
+                    </p>
                 </div>
             `;
+            document.getElementById('signin-form').addEventListener('submit', handleSignInFormSubmit);
             document.getElementById('google-sign-in').addEventListener('click', handleGoogleSignIn);
+        };
+        
+        const renderSignUpView = () => {
+            mainTitle.textContent = "Sign Up";
+            contentContainer.innerHTML = `
+                <div class="app-card w-full max-w-sm">
+                    <h2 class="text-2xl font-semibold mb-4 text-center">Create an Account</h2>
+                    <form id="signup-form" class="space-y-4">
+                        <input type="email" id="signup-email" class="input-base" placeholder="Email" required>
+                        <input type="password" id="signup-password" class="input-base" placeholder="Password" required>
+                        <button type="submit" class="btn-base btn-primary w-full">Sign Up</button>
+                    </form>
+                    <p class="mt-4 text-center text-sm text-gray-500">
+                        Already have an account? <a href="#/signin" class="text-blue-500 hover:underline">Sign In</a>
+                    </p>
+                </div>
+            `;
+            document.getElementById('signup-form').addEventListener('submit', handleSignUpFormSubmit);
         };
         
         const renderSharedView = async (type, id) => {
@@ -517,10 +550,15 @@
             const id = path[2];
 
             if (route === 'share') {
-                 // Correctly gets the type and ID from the path.
                  renderSharedView(path[2], path[3]);
             } else if (!userId) {
-                renderAuthView();
+                 if (route === 'signin') {
+                     renderSignInView();
+                 } else if (route === 'signup') {
+                     renderSignUpView();
+                 } else {
+                     window.location.hash = '#/signin';
+                 }
             } else if (route === 'notes' && id) {
                  renderNoteEditorView(id);
             } else if (route === 'notes') {
@@ -540,6 +578,17 @@
                 onAuthStateChanged(auth, async (user) => {
                     userId = user ? user.uid : null;
                     isAuthReady = true;
+                    if (userId) {
+                        logoutBtn.classList.remove('hidden');
+                        if (['signin', 'signup'].includes(window.location.hash.slice(2))) {
+                            window.location.hash = '#/bookmarks';
+                        }
+                    } else {
+                        logoutBtn.classList.add('hidden');
+                        if (!['signin', 'signup'].includes(window.location.hash.slice(2))) {
+                            window.location.hash = '#/signin';
+                        }
+                    }
                     router();
                     globalLoadingOverlay.classList.add('hidden');
                 });
@@ -557,6 +606,42 @@
             } catch (error) {
                 console.error("Google sign-in failed:", error);
                 showToast("Google sign-in failed.", 'error');
+            }
+        };
+
+        const handleSignInFormSubmit = async (e) => {
+            e.preventDefault();
+            const email = document.getElementById('signin-email').value;
+            const password = document.getElementById('signin-password').value;
+            try {
+                await signInWithEmailAndPassword(auth, email, password);
+                showToast("Signed in successfully!");
+            } catch (error) {
+                console.error("Sign in failed:", error);
+                showToast("Sign in failed. Check your email and password.", 'error');
+            }
+        };
+        
+        const handleSignUpFormSubmit = async (e) => {
+            e.preventDefault();
+            const email = document.getElementById('signup-email').value;
+            const password = document.getElementById('signup-password').value;
+            try {
+                await createUserWithEmailAndPassword(auth, email, password);
+                showToast("Account created successfully!");
+            } catch (error) {
+                console.error("Sign up failed:", error);
+                showToast("Sign up failed. Password must be at least 6 characters.", 'error');
+            }
+        };
+
+        const handleSignOut = async () => {
+            try {
+                await signOut(auth);
+                showToast("Signed out successfully!");
+            } catch (error) {
+                console.error("Sign out failed:", error);
+                showToast("Failed to sign out.", 'error');
             }
         };
 
@@ -971,6 +1056,7 @@
              previewIframe.src = 'about:blank';
         });
         themeToggle.addEventListener('click', toggleTheme);
+        logoutBtn.addEventListener('click', handleSignOut);
         // New confirm modal listeners
         cancelDeleteBtn.addEventListener('click', () => hideModal(confirmModal));
         confirmDeleteBtn.addEventListener('click', () => {
@@ -988,3 +1074,4 @@
     </script>
 </body>
 </html>
+
