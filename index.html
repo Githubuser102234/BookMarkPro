@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Modern Bookmark and Notes Manager</title>
+    <title>BookMarkPro</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -380,6 +380,7 @@
         
         // --- Routing and View Rendering ---
         const renderBookmarksView = () => {
+            document.title = "BookMarkPro - BookMarks";
             mainTitle.textContent = "Your Bookmarks";
             contentContainer.innerHTML = `
                 <div class="flex flex-col md:flex-row space-y-4 md:space-y-0 md:space-x-4 mb-8">
@@ -403,7 +404,7 @@
                         </div>
                         <ul id="folders-list" class="space-y-4 hidden"></ul>
                     </div>
-                     <button id="add-folder-btn" class="btn-base btn-secondary w-full mt-4">Add New Folder</button>
+                     <button id="add-folder-btn" class="btn-base btn-secondary w-full mt-4" data-parent-id="">Add New Folder</button>
                 </div>
                 <div class="app-card">
                     <h2 class="text-2xl font-semibold mb-4 text-center">My Links</h2>
@@ -432,12 +433,13 @@
             document.getElementById('search-input').addEventListener('input', filterAndSortBookmarks);
             document.getElementById('sort-select').addEventListener('change', filterAndSortBookmarks);
             document.getElementById('add-folder-btn').addEventListener('click', () => showModal(folderModal));
-            setupRealtimeListener('folders');
-            setupRealtimeListener('bookmarks');
+            setupRealtimeListener('folders', null); // Load top-level folders
+            setupRealtimeListener('bookmarks', null); // Load top-level bookmarks
             filterAndSortBookmarks();
         };
 
         const renderFolderContentsView = async (folderId) => {
+            document.title = "BookMarkPro - Folder - ...";
             mainTitle.textContent = "Loading Folder...";
             contentContainer.innerHTML = `
                 <div class="app-card flex flex-col items-center justify-center min-h-[300px]">
@@ -470,18 +472,30 @@
                 return;
             }
 
+            document.title = `BookMarkPro - Folder - ${folder.name}`;
             mainTitle.textContent = folder.name;
             contentContainer.innerHTML = `
                 <div class="flex space-x-2 mb-4">
                     <button class="btn-base btn-secondary" onclick="window.location.hash = '#/bookmarks'">Back to Bookmarks</button>
+                    ${folder.parentFolderId ? `<button class="btn-base btn-secondary" onclick="window.location.hash = '#/bookmarks/folder/${folder.parentFolderId}'">Back to Parent Folder</button>` : ''}
                 </div>
                  <div class="app-card mb-8">
-                    <h2 class="text-2xl font-semibold mb-4 text-center">Add a New Link to this Folder</h2>
+                    <h2 class="text-2xl font-semibold mb-4 text-center">Add a New Link</h2>
                     <form id="add-bookmark-form" class="space-y-4">
                         <input type="text" id="add-name" class="input-base" placeholder="Site Name (e.g., Google)" required>
                         <input type="url" id="add-url" class="input-base" placeholder="URL (e.g., https://www.google.com)" required>
                         <button type="submit" class="btn-base btn-primary w-full">Save Bookmark</button>
                     </form>
+                </div>
+                <div class="app-card mb-8">
+                    <h2 class="text-2xl font-semibold mb-4 text-center">Subfolders</h2>
+                    <div id="folders-container" class="space-y-4">
+                        <div id="loading-spinner-folders" class="flex justify-center py-8">
+                            <div class="loader"></div>
+                        </div>
+                        <ul id="folders-list" class="space-y-4 hidden"></ul>
+                    </div>
+                     <button id="add-folder-btn" class="btn-base btn-secondary w-full mt-4" data-parent-id="${folder.id}">Add New Folder</button>
                 </div>
                 <div class="app-card">
                     <h2 class="text-2xl font-semibold mb-4 text-center">Links in ${folder.name}</h2>
@@ -509,11 +523,14 @@
             document.getElementById('add-bookmark-form').addEventListener('submit', (e) => handleAddFormSubmit(e, folderId));
             document.getElementById('search-input').addEventListener('input', () => filterAndSortBookmarks(folderId));
             document.getElementById('sort-select').addEventListener('change', () => filterAndSortBookmarks(folderId));
-            setupRealtimeListener('bookmarks', folderId);
+            document.getElementById('add-folder-btn').addEventListener('click', handleAddFolderButtonClick);
+            setupRealtimeListener('folders', folderId); // Load subfolders
+            setupRealtimeListener('bookmarks', folderId); // Load bookmarks in this folder
             filterAndSortBookmarks(folderId);
         };
 
         const renderNotesView = () => {
+            document.title = "BookMarkPro - Notes";
             mainTitle.textContent = "Your Notes";
             contentContainer.innerHTML = `
                 <div class="flex flex-col md:flex-row space-y-4 md:space-y-0 md:space-x-4 mb-8">
@@ -543,6 +560,7 @@
         };
         
         const renderNoteEditorView = async (noteId) => {
+            document.title = "BookMarkPro - Edit Note";
             mainTitle.textContent = "Note Editor";
             contentContainer.innerHTML = `
                 <div class="flex space-x-2 mb-4">
@@ -603,6 +621,7 @@
         };
 
         const renderSignInView = () => {
+            document.title = "BookMarkPro - Sign In";
             mainTitle.textContent = "Sign In";
             contentContainer.innerHTML = `
                 <div class="app-card w-full max-w-sm">
@@ -631,6 +650,7 @@
         };
         
         const renderSignUpView = () => {
+            document.title = "BookMarkPro - Sign Up";
             mainTitle.textContent = "Sign Up";
             contentContainer.innerHTML = `
                 <div class="app-card w-full max-w-sm">
@@ -654,6 +674,7 @@
                 window.location.hash = '#/bookmarks';
                 return;
             }
+            document.title = `BookMarkPro - Shared ${type === 'bookmarks' ? 'Bookmark' : 'Note'}`;
             mainTitle.textContent = `Shared ${type === 'bookmarks' ? 'Bookmark' : 'Note'}`;
             contentContainer.innerHTML = `
                 <div id="shared-view" class="app-card w-full max-w-2xl text-center">
@@ -776,7 +797,7 @@
         };
 
         // --- Data Fetching and Management ---
-        const setupRealtimeListener = (type, folderId = null) => {
+        const setupRealtimeListener = (type, parentId = null) => {
             if (!userId) return;
 
             if (type === 'bookmarks') {
@@ -787,18 +808,14 @@
                 list.classList.add('hidden');
                 
                 let q = collection(db, `users/${userId}/bookmarks`);
-                if (folderId) {
-                    q = query(q, where('folderId', '==', folderId));
-                } else {
-                    q = query(q, where('folderId', '==', null));
-                }
+                q = query(q, where('folderId', '==', parentId));
 
                 unsubscribeBookmarks = onSnapshot(q, (snapshot) => {
                     bookmarksCache = [];
                     snapshot.forEach(doc => {
                         bookmarksCache.push({ id: doc.id, ...doc.data() });
                     });
-                    filterAndSortBookmarks(folderId);
+                    filterAndSortBookmarks(parentId);
                     loadingSpinner.classList.add('hidden');
                     list.classList.remove('hidden');
                 }, (error) => {
@@ -809,10 +826,10 @@
                 });
             } else if (type === 'notes') {
                 if (unsubscribeNotes) unsubscribeNotes();
-                const loadingSpinner = document.getElementById('loading-spinner-notes');
+                const loadingSpinner = document.getElementById('notes-list') ? document.getElementById('loading-spinner-notes') : null;
                 const list = document.getElementById('notes-list');
-                loadingSpinner.classList.remove('hidden');
-                list.classList.add('hidden');
+                if (loadingSpinner) loadingSpinner.classList.remove('hidden');
+                if (list) list.classList.add('hidden');
 
                 const colRef = collection(db, `users/${userId}/notes`);
                 unsubscribeNotes = onSnapshot(colRef, (snapshot) => {
@@ -821,13 +838,13 @@
                         notesCache.push({ id: doc.id, ...doc.data() });
                     });
                     renderNotesList(notesCache);
-                    loadingSpinner.classList.add('hidden');
-                    list.classList.remove('hidden');
+                    if (loadingSpinner) loadingSpinner.classList.add('hidden');
+                    if (list) list.classList.remove('hidden');
                 }, (error) => {
                     console.error("Error fetching notes:", error);
                     showToast("Failed to load notes.", 'error');
-                    loadingSpinner.classList.add('hidden');
-                    list.classList.remove('hidden');
+                    if (loadingSpinner) loadingSpinner.classList.add('hidden');
+                    if (list) list.classList.remove('hidden');
                 });
             } else if (type === 'folders') {
                  if (unsubscribeFolders) unsubscribeFolders();
@@ -836,7 +853,8 @@
                  loadingSpinner.classList.remove('hidden');
                  list.classList.add('hidden');
                  const colRef = collection(db, `users/${userId}/folders`);
-                 unsubscribeFolders = onSnapshot(colRef, (snapshot) => {
+                 const q = query(colRef, where('parentFolderId', '==', parentId));
+                 unsubscribeFolders = onSnapshot(q, (snapshot) => {
                      foldersCache = [];
                      snapshot.forEach(doc => {
                          foldersCache.push({ id: doc.id, ...doc.data() });
@@ -942,12 +960,13 @@
             }
         };
 
-        const addFolder = async (name) => {
+        const addFolder = async (name, parentFolderId = null) => {
             if (!userId) return showToast("User not authenticated.", 'error');
             try {
                 const colRef = collection(db, `users/${userId}/folders`);
                 await addDoc(colRef, {
                     name,
+                    parentFolderId: parentFolderId,
                     createdAt: new Date().toISOString()
                 });
                 showToast("Folder created successfully!");
@@ -977,9 +996,6 @@
             try {
                 const docRef = doc(db, `users/${userId}/folders`, id);
                 await deleteDoc(docRef);
-                // Note: Firestore rules will cascade delete subcollections, but not documents directly in `bookmarks`.
-                // For this simple app, we will let the bookmarks remain "orphaned" or un-categorized.
-                // A more robust solution would be to update the bookmarks' folderId to null.
                 showToast("Folder deleted!");
             } catch (error) {
                 console.error("Error deleting folder:", error);
@@ -1076,7 +1092,7 @@
                 }
             });
 
-            renderBookmarksList(filteredBookmarks, folderId);
+            renderBookmarksList(filteredBookmarks);
         };
 
         const renderFoldersList = (folders) => {
@@ -1124,7 +1140,7 @@
             });
         };
 
-        const renderBookmarksList = (bookmarks, folderId) => {
+        const renderBookmarksList = (bookmarks) => {
             const bookmarksList = document.getElementById('bookmarks-list');
             if (!bookmarksList) return;
 
@@ -1135,7 +1151,6 @@
             }
 
             bookmarks.forEach(bookmark => {
-                if (folderId && bookmark.folderId !== folderId) return;
                 const li = document.createElement('li');
                 li.className = 'flex flex-col md:flex-row items-start md:items-center justify-between p-4 bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 transition-colors duration-300';
                 li.innerHTML = `
@@ -1233,7 +1248,12 @@
         const handleAddFolderFormSubmit = (e) => {
             e.preventDefault();
             const name = document.getElementById('add-folder-name').value;
-            addFolder(name);
+            const parentId = e.target.dataset.parentId || null;
+            addFolder(name, parentId);
+        };
+        const handleAddFolderButtonClick = (e) => {
+            addFolderForm.dataset.parentId = e.currentTarget.dataset.parentId || '';
+            showModal(folderModal);
         };
         const handleEditNoteFormSubmit = (e, noteId) => {
             e.preventDefault();
