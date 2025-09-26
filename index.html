@@ -154,6 +154,50 @@
             0% { transform: rotate(0deg); }
             100% { transform: rotate(360deg); }
         }
+        /* Custom styles for chat view */
+        #chat-messages-container {
+            height: 400px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column-reverse; /* Display newest messages at the bottom */
+            gap: 1rem;
+            padding-right: 0.5rem;
+            margin-bottom: 1rem;
+        }
+        .chat-message {
+            max-width: 80%;
+            padding: 0.75rem 1rem;
+            border-radius: 1rem;
+            word-wrap: break-word;
+        }
+        .chat-message.self {
+            background-color: var(--accent-color);
+            color: white;
+            align-self: flex-end;
+            margin-left: auto;
+            border-bottom-right-radius: 0.25rem;
+        }
+        .chat-message.other {
+            background-color: var(--input-border);
+            color: var(--text-color);
+            align-self: flex-start;
+            border-bottom-left-radius: 0.25rem;
+        }
+        .chat-lock-status {
+            font-weight: 500;
+            padding: 0.5rem;
+            border-radius: 0.75rem;
+            text-align: center;
+            margin-bottom: 1rem;
+        }
+        .chat-lock-status.locked {
+            background-color: #fee2e2; /* Red-100 */
+            color: #ef4444; /* Red-500 */
+        }
+        .chat-lock-status.unlocked {
+            background-color: #ecfdf5; /* Green-100 */
+            color: #10b981; /* Green-500 */
+        }
     </style>
 </head>
 <body class="transition-colors duration-300">
@@ -163,18 +207,26 @@
     </div>
     
     <div class="container-app min-h-screen">
-        <div class="flex justify-between items-center w-full max-w-2xl mb-8">
-            <h1 id="main-title" class="text-4xl md:text-5xl font-bold"></h1>
-            <div class="flex items-center space-x-4">
-                <button id="logout-btn" class="btn-base btn-secondary hidden">Log Out</button>
-                <button id="theme-toggle" class="p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors">
-                    <svg id="moon-icon" class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
-                    </svg>
-                    <svg id="sun-icon" class="w-6 h-6 hidden" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
-                    </svg>
-                </button>
+        <div class="flex flex-col w-full max-w-2xl mb-8">
+            <div class="flex justify-between items-center w-full mb-4">
+                <h1 id="main-title" class="text-4xl md:text-5xl font-bold"></h1>
+                <div class="flex items-center space-x-4">
+                    <button id="logout-btn" class="btn-base btn-secondary hidden">Log Out</button>
+                    <button id="theme-toggle" class="p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors">
+                        <svg id="moon-icon" class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
+                        </svg>
+                        <svg id="sun-icon" class="w-6 h-6 hidden" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
+                        </svg>
+                    </button>
+                </div>
+            </div>
+            <!-- Dynamic Navigation for Logged In Users -->
+            <div id="auth-nav" class="flex flex-wrap gap-2 justify-center w-full hidden">
+                <button class="btn-base btn-secondary flex-1" onclick="window.location.hash = '#/bookmarks'">Bookmarks</button>
+                <button class="btn-base btn-secondary flex-1" onclick="window.location.hash = '#/notes'">Notes</button>
+                <button class="btn-base btn-secondary flex-1" onclick="window.location.hash = '#/global-chat'">Global Chat</button>
             </div>
         </div>
 
@@ -279,7 +331,7 @@
         import { initializeApp } from "https://www.gstatic.com/firebasejs/12.3.0/firebase-app.js";
         import { getAnalytics } from "https://www.gstatic.com/firebasejs/12.3.0/firebase-analytics.js";
         import { getAuth, onAuthStateChanged, GoogleAuthProvider, signInWithPopup, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut } from "https://www.gstatic.com/firebasejs/12.3.0/firebase-auth.js";
-        import { getFirestore, doc, collection, onSnapshot, addDoc, updateDoc, deleteDoc, getDoc, setLogLevel, query, where } from "https://www.gstatic.com/firebasejs/12.3.0/firebase-firestore.js";
+        import { getFirestore, doc, collection, onSnapshot, addDoc, updateDoc, deleteDoc, getDoc, setLogLevel, query, where, orderBy, limit, setDoc } from "https://www.gstatic.com/firebasejs/12.3.0/firebase-firestore.js";
 
         // Your web app's Firebase configuration
         const firebaseConfig = {
@@ -301,6 +353,25 @@
         let unsubscribeBookmarks = null;
         let unsubscribeNotes = null;
         let unsubscribeFolders = null;
+        
+        // --- CHAT VARIABLES ---
+        let unsubscribeChatConfig = null;
+        let unsubscribeChatMessages = null;
+        let chatIsLocked = false;
+        let chatMessagesCache = [];
+        
+        // ** IMPORTANT: The approved user IDs for locking the chat. Replace these with your actual UIDs.**
+        const APPROVED_CHAT_ADMINS = [
+            // Add your admin UIDs here (e.g., "yB5g4hT7...9lM")
+            "replace_with_admin_uid_1", 
+            "replace_with_admin_uid_2"
+        ];
+        
+        // ** Firestore Paths for Global Chat **
+        const CHAT_CONFIG_DOC_REF = () => doc(db, 'global_chat_config', 'settings');
+        const CHAT_MESSAGES_COL_REF = () => collection(db, 'global_chat_messages');
+        // --- END CHAT VARIABLES ---
+        
         let bookmarksCache = [];
         let notesCache = [];
         let foldersCache = [];
@@ -314,6 +385,7 @@
         const sunIcon = document.getElementById('sun-icon');
         const moonIcon = document.getElementById('moon-icon');
         const logoutBtn = document.getElementById('logout-btn');
+        const authNav = document.getElementById('auth-nav'); // New Nav element
 
         // Modal Elements
         const editModal = document.getElementById('edit-modal');
@@ -379,14 +451,23 @@
         };
         
         // --- Routing and View Rendering ---
+        const setAuthNavActive = (route) => {
+            authNav.querySelectorAll('button').forEach(btn => {
+                const buttonRoute = btn.onclick.toString().match(/#\/(\w+)/);
+                if (buttonRoute && buttonRoute[1] === route) {
+                    btn.classList.replace('btn-secondary', 'btn-primary');
+                } else {
+                    btn.classList.replace('btn-primary', 'btn-secondary');
+                }
+            });
+        };
+
         const renderBookmarksView = () => {
             document.title = "BookMarkPro - BookMarks";
             mainTitle.textContent = "Your Bookmarks";
+            setAuthNavActive('bookmarks');
+            
             contentContainer.innerHTML = `
-                <div class="flex flex-col md:flex-row space-y-4 md:space-y-0 md:space-x-4 mb-8">
-                    <button class="btn-base btn-primary flex-1" onclick="window.location.hash = '#/bookmarks'">Bookmarks</button>
-                    <button class="btn-base btn-secondary flex-1" onclick="window.location.hash = '#/notes'">Notes</button>
-                </div>
                 <div class="app-card mb-8">
                     <h2 class="text-2xl font-semibold mb-4 text-center">Add a New Link</h2>
                     <form id="add-bookmark-form" class="space-y-4">
@@ -435,12 +516,15 @@
             document.getElementById('add-folder-btn').addEventListener('click', () => showModal(folderModal));
             setupRealtimeListener('folders', null); // Load top-level folders
             setupRealtimeListener('bookmarks', null); // Load top-level bookmarks
+            setupChatListeners(false); // Stop chat listeners if active
             filterAndSortBookmarks();
         };
 
         const renderFolderContentsView = async (folderId) => {
             document.title = "BookMarkPro - Folder - ...";
             mainTitle.textContent = "Loading Folder...";
+            setAuthNavActive('bookmarks');
+            setupChatListeners(false); // Stop chat listeners if active
             contentContainer.innerHTML = `
                 <div class="app-card flex flex-col items-center justify-center min-h-[300px]">
                     <div class="loader mb-4"></div>
@@ -448,10 +532,8 @@
                 </div>
             `;
             
-            // Try to find the folder in the cache first.
             let folder = foldersCache.find(f => f.id === folderId);
             
-            // If not in cache, fetch it directly. This handles the page refresh scenario.
             if (!folder) {
                 try {
                     const docRef = doc(db, `users/${userId}/folders`, folderId);
@@ -467,7 +549,6 @@
 
             if (!folder) {
                 showToast("Folder not found. Redirecting...", "error");
-                // Use a short delay before redirect to allow toast to be seen
                 setTimeout(() => window.location.hash = '#/bookmarks', 1500);
                 return;
             }
@@ -532,11 +613,9 @@
         const renderNotesView = () => {
             document.title = "BookMarkPro - Notes";
             mainTitle.textContent = "Your Notes";
+            setAuthNavActive('notes');
+            setupChatListeners(false); // Stop chat listeners if active
             contentContainer.innerHTML = `
-                <div class="flex flex-col md:flex-row space-y-4 md:space-y-0 md:space-x-4 mb-8">
-                    <button class="btn-base btn-secondary flex-1" onclick="window.location.hash = '#/bookmarks'">Bookmarks</button>
-                    <button class="btn-base btn-primary flex-1" onclick="window.location.hash = '#/notes'">Notes</button>
-                </div>
                 <div class="app-card mb-8">
                     <h2 class="text-2xl font-semibold mb-4 text-center">Add a New Note</h2>
                     <form id="add-note-form" class="space-y-4">
@@ -562,6 +641,8 @@
         const renderNoteEditorView = async (noteId) => {
             document.title = "BookMarkPro - Edit Note";
             mainTitle.textContent = "Note Editor";
+            setAuthNavActive('notes');
+            setupChatListeners(false); // Stop chat listeners if active
             contentContainer.innerHTML = `
                 <div class="flex space-x-2 mb-4">
                     <button class="btn-base btn-secondary" onclick="window.location.hash = '#/notes'">Back to Notes</button>
@@ -576,7 +657,6 @@
             let note = notesCache.find(n => n.id === noteId);
 
             if (!note) {
-                // If not in cache, try to fetch it directly
                 try {
                     const docRef = doc(db, `users/${userId}/notes`, noteId);
                     const docSnap = await getDoc(docRef);
@@ -620,9 +700,205 @@
             }
         };
 
+        // --- NEW CHAT VIEW ---
+        const renderGlobalChatView = () => {
+            document.title = "BookMarkPro - Global Chat";
+            mainTitle.textContent = "Global Chat";
+            setAuthNavActive('global-chat');
+            
+            // Unsubscribe from other listeners
+            if (unsubscribeBookmarks) unsubscribeBookmarks();
+            if (unsubscribeNotes) unsubscribeNotes();
+            if (unsubscribeFolders) unsubscribeFolders();
+
+            contentContainer.innerHTML = `
+                <div class="app-card w-full max-w-2xl flex flex-col h-[650px]">
+                    <div id="chat-lock-status" class="chat-lock-status hidden"></div>
+                    <div id="chat-header" class="flex justify-between items-center mb-4 pb-4 border-b border-gray-200 dark:border-gray-700">
+                        <h2 class="text-xl font-semibold">Live Chat Feed</h2>
+                        <button id="toggle-lock-btn" class="btn-base btn-secondary text-sm hidden">
+                            <svg class="w-5 h-5 inline-block" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2z"></path></svg>
+                            <span id="lock-text" class="ml-1">Toggle Lock</span>
+                        </button>
+                    </div>
+
+                    <div id="chat-messages-container" class="flex-grow min-h-0">
+                        <!-- Messages will be rendered here -->
+                        <div id="loading-spinner-chat" class="flex justify-center py-8">
+                            <div class="loader"></div>
+                        </div>
+                    </div>
+
+                    <form id="chat-form" class="flex space-x-2 pt-4 border-t border-gray-200 dark:border-gray-700">
+                        <input type="text" id="chat-input" class="input-base flex-grow" placeholder="Type a message..." required>
+                        <button type="submit" class="btn-base btn-primary" id="send-chat-btn">Send</button>
+                    </form>
+                </div>
+            `;
+            
+            // Attach listeners
+            document.getElementById('chat-form').addEventListener('submit', handleSendChatMessage);
+            document.getElementById('toggle-lock-btn').addEventListener('click', toggleChatLock);
+            
+            // Start chat listeners
+            setupChatListeners(true);
+        };
+
+        const setupChatListeners = (shouldListen) => {
+            if (unsubscribeChatConfig) unsubscribeChatConfig();
+            if (unsubscribeChatMessages) unsubscribeChatMessages();
+
+            if (shouldListen && db) {
+                // 1. Config Listener (for lock status)
+                unsubscribeChatConfig = onSnapshot(CHAT_CONFIG_DOC_REF(), (docSnap) => {
+                    const data = docSnap.exists() ? docSnap.data() : { isLocked: false };
+                    chatIsLocked = !!data.isLocked;
+                    renderChatConfig();
+                }, (error) => {
+                    console.error("Error fetching chat config:", error);
+                    showToast("Failed to load chat configuration.", 'error');
+                });
+
+                // 2. Messages Listener
+                // Order by timestamp in descending order and limit to the latest 50 messages
+                const q = query(CHAT_MESSAGES_COL_REF(), orderBy('timestamp', 'desc'), limit(50));
+                unsubscribeChatMessages = onSnapshot(q, (snapshot) => {
+                    chatMessagesCache = [];
+                    snapshot.forEach(doc => {
+                        chatMessagesCache.push({ id: doc.id, ...doc.data() });
+                    });
+                    renderChatMessages();
+                }, (error) => {
+                    console.error("Error fetching chat messages:", error);
+                    showToast("Failed to load chat messages.", 'error');
+                });
+            }
+        };
+
+        const renderChatConfig = () => {
+            const statusDiv = document.getElementById('chat-lock-status');
+            const toggleBtn = document.getElementById('toggle-lock-btn');
+            const chatInput = document.getElementById('chat-input');
+            const sendBtn = document.getElementById('send-chat-btn');
+            const lockText = document.getElementById('lock-text');
+
+            if (!statusDiv || !toggleBtn) return;
+            
+            const isAdmin = APPROVED_CHAT_ADMINS.includes(userId);
+            toggleBtn.classList.toggle('hidden', !isAdmin);
+            
+            statusDiv.classList.remove('hidden', 'locked', 'unlocked');
+            
+            if (chatIsLocked) {
+                statusDiv.classList.add('locked');
+                statusDiv.textContent = "Chat is currently LOCKED. Only admins can send messages.";
+                lockText.textContent = "Unlock Chat";
+                chatInput.disabled = !isAdmin;
+                sendBtn.disabled = !isAdmin;
+                chatInput.placeholder = isAdmin ? "Chat is locked, but you can still talk..." : "Chat is locked by an administrator.";
+            } else {
+                statusDiv.classList.add('unlocked');
+                statusDiv.textContent = "Chat is OPEN and active!";
+                lockText.textContent = "Lock Chat";
+                chatInput.disabled = false;
+                sendBtn.disabled = false;
+                chatInput.placeholder = "Type a message...";
+            }
+        };
+
+        const renderChatMessages = () => {
+            const messagesContainer = document.getElementById('chat-messages-container');
+            const loadingSpinner = document.getElementById('loading-spinner-chat');
+            if (!messagesContainer) return;
+
+            loadingSpinner.classList.add('hidden');
+            
+            messagesContainer.innerHTML = '';
+            
+            if (chatMessagesCache.length === 0) {
+                 messagesContainer.innerHTML = `<p class="text-center text-gray-500 py-8">Start the conversation! No messages yet.</p>`;
+                 return;
+            }
+
+            chatMessagesCache.forEach(message => {
+                const isSelf = message.userId === userId;
+                const messageDiv = document.createElement('div');
+                messageDiv.className = `chat-message ${isSelf ? 'self' : 'other'} flex flex-col`;
+                
+                const senderName = document.createElement('span');
+                senderName.className = `text-xs ${isSelf ? 'text-white/70' : 'text-gray-500 dark:text-gray-400'} font-medium mb-1`;
+                
+                // Truncate email for display privacy
+                const userDisplay = message.userEmail;
+                const parts = userDisplay.split('@');
+                const truncatedName = parts[0].length > 10 ? parts[0].substring(0, 8) + '...' : parts[0];
+                const displayEmail = parts.length > 1 ? `${truncatedName}@${parts[1]}` : userDisplay;
+                
+                senderName.textContent = isSelf ? 'You' : displayEmail;
+
+                const messageText = document.createElement('p');
+                messageText.textContent = message.text;
+                messageText.className = 'text-sm';
+                
+                messageDiv.appendChild(senderName);
+                messageDiv.appendChild(messageText);
+
+                // Prepend to display newest at the bottom due to flex-direction: column-reverse CSS
+                messagesContainer.prepend(messageDiv);
+            });
+            
+            // Scroll to bottom (which is the top of the container due to column-reverse)
+            messagesContainer.scrollTop = 0;
+        };
+        
+        const handleSendChatMessage = async (e) => {
+            e.preventDefault();
+            const input = document.getElementById('chat-input');
+            const messageText = input.value.trim();
+            if (!messageText || !userId || !auth.currentUser.email) return;
+            
+            const isAdmin = APPROVED_CHAT_ADMINS.includes(userId);
+            if (chatIsLocked && !isAdmin) {
+                showToast("Chat is locked by an administrator.", 'error');
+                return;
+            }
+
+            try {
+                await addDoc(CHAT_MESSAGES_COL_REF(), {
+                    userId: userId,
+                    userEmail: auth.currentUser.email,
+                    text: messageText,
+                    timestamp: new Date().getTime(),
+                });
+                input.value = '';
+            } catch (error) {
+                console.error("Error sending message:", error);
+                showToast("Failed to send message.", 'error');
+            }
+        };
+
+        const toggleChatLock = async () => {
+            if (!APPROVED_CHAT_ADMINS.includes(userId)) {
+                showToast("Permission denied. Only approved admins can toggle the chat lock.", 'error');
+                return;
+            }
+            
+            const newLockState = !chatIsLocked;
+            try {
+                await setDoc(CHAT_CONFIG_DOC_REF(), { isLocked: newLockState }, { merge: true });
+                showToast(`Chat has been ${newLockState ? 'LOCKED' : 'UNLOCKED'}.`);
+            } catch (error) {
+                console.error("Error toggling chat lock:", error);
+                showToast("Failed to toggle chat lock status.", 'error');
+            }
+        };
+        // --- END CHAT LOGIC ---
+
         const renderSignInView = () => {
             document.title = "BookMarkPro - Sign In";
             mainTitle.textContent = "Sign In";
+            authNav.classList.add('hidden');
+            setupChatListeners(false);
             contentContainer.innerHTML = `
                 <div class="app-card w-full max-w-sm">
                     <h2 class="text-2xl font-semibold mb-4 text-center">Sign In</h2>
@@ -652,6 +928,8 @@
         const renderSignUpView = () => {
             document.title = "BookMarkPro - Sign Up";
             mainTitle.textContent = "Sign Up";
+            authNav.classList.add('hidden');
+            setupChatListeners(false);
             contentContainer.innerHTML = `
                 <div class="app-card w-full max-w-sm">
                     <h2 class="text-2xl font-semibold mb-4 text-center">Create an Account</h2>
@@ -669,6 +947,7 @@
         };
         
         const renderSharedView = async (type, id) => {
+            setupChatListeners(false);
             if (!type || !id) {
                 showToast("Invalid share link.", 'error');
                 window.location.hash = '#/bookmarks';
@@ -692,6 +971,7 @@
             await fetchSharedContent(type, id);
         };
 
+
         const router = () => {
             if (!isAuthReady) return;
             const path = window.location.hash.slice(1).split('/');
@@ -708,6 +988,8 @@
                  } else {
                      window.location.hash = '#/signin';
                  }
+            } else if (route === 'global-chat') {
+                 renderGlobalChatView();
             } else if (route === 'notes' && path[2]) {
                  renderNoteEditorView(path[2]);
             } else if (route === 'notes') {
@@ -731,12 +1013,20 @@
                     isAuthReady = true;
                     if (userId) {
                         logoutBtn.classList.remove('hidden');
+                        authNav.classList.remove('hidden');
                         if (['signin', 'signup'].includes(window.location.hash.slice(2))) {
                             window.location.hash = '#/bookmarks';
                         }
                     } else {
                         logoutBtn.classList.add('hidden');
-                        if (!['signin', 'signup'].includes(window.location.hash.slice(2))) {
+                        authNav.classList.add('hidden');
+                        // Clear all listeners when signing out
+                        if (unsubscribeBookmarks) unsubscribeBookmarks();
+                        if (unsubscribeNotes) unsubscribeNotes();
+                        if (unsubscribeFolders) unsubscribeFolders();
+                        setupChatListeners(false);
+
+                        if (!['signin', 'signup', 'share'].includes(window.location.hash.slice(2).split('/')[0])) {
                             window.location.hash = '#/signin';
                         }
                     }
@@ -799,6 +1089,8 @@
         // --- Data Fetching and Management ---
         const setupRealtimeListener = (type, parentId = null) => {
             if (!userId) return;
+            
+            setupChatListeners(false); 
 
             if (type === 'bookmarks') {
                 if (unsubscribeBookmarks) unsubscribeBookmarks();
@@ -1064,7 +1356,7 @@
             }
         };
 
-        // --- Filtering, Sorting, and Rendering ---
+        // --- Filtering, Sorting, and Rendering (rest of file) ---
         const filterAndSortBookmarks = (folderId = null) => {
             const searchInput = document.getElementById('search-input');
             const sortSelect = document.getElementById('sort-select');
