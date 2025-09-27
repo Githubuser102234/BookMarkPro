@@ -206,7 +206,7 @@
         <div id="folder-modal" class="modal-overlay">
             <div class="modal-content">
                 <h2 class="text-xl font-semibold mb-4 text-center">Add New Folder</h2>
-                <form id="add-folder-form" class="space-y-4">
+                <form id="add-folder-form" class="space-y-4" data-parent-id="">
                     <input type="text" id="add-folder-name" class="input-base" placeholder="Folder Name" required>
                     <div class="flex justify-end space-x-2">
                         <button type="button" id="cancel-folder" class="btn-base btn-secondary">Cancel</button>
@@ -432,13 +432,14 @@
             document.getElementById('add-bookmark-form').addEventListener('submit', handleAddFormSubmit);
             document.getElementById('search-input').addEventListener('input', filterAndSortBookmarks);
             document.getElementById('sort-select').addEventListener('change', filterAndSortBookmarks);
-            document.getElementById('add-folder-btn').addEventListener('click', () => showModal(folderModal));
+            document.getElementById('add-folder-btn').addEventListener('click', handleAddFolderButtonClick);
             setupRealtimeListener('folders', null); // Load top-level folders
             setupRealtimeListener('bookmarks', null); // Load top-level bookmarks
             filterAndSortBookmarks();
         };
 
-        const renderFolderContentsView = async (folderId) => {
+        // Modified to accept and use the full path array for generating "Back" button links
+        const renderFolderContentsView = async (folderId, pathArray) => {
             document.title = "BookMarkPro - Folder - ...";
             mainTitle.textContent = "Loading Folder...";
             contentContainer.innerHTML = `
@@ -451,7 +452,7 @@
             // Try to find the folder in the cache first.
             let folder = foldersCache.find(f => f.id === folderId);
             
-            // If not in cache, fetch it directly. This handles the page refresh scenario.
+            // If not in cache, fetch it directly.
             if (!folder) {
                 try {
                     const docRef = doc(db, `users/${userId}/folders`, folderId);
@@ -467,17 +468,22 @@
 
             if (!folder) {
                 showToast("Folder not found. Redirecting...", "error");
-                // Use a short delay before redirect to allow toast to be seen
                 setTimeout(() => window.location.hash = '#/bookmarks', 1500);
                 return;
             }
+
+            // Dynamically determine the hash for the immediate parent folder
+            const parentHash = pathArray.length > 2 
+                ? `#/bookmarks/${pathArray.slice(0, pathArray.length - 2).join('/')}` 
+                : '#/bookmarks';
 
             document.title = `BookMarkPro - Folder - ${folder.name}`;
             mainTitle.textContent = folder.name;
             contentContainer.innerHTML = `
                 <div class="flex space-x-2 mb-4">
-                    <button class="btn-base btn-secondary" onclick="window.location.hash = '#/bookmarks'">Back to Bookmarks</button>
-                    ${folder.parentFolderId ? `<button class="btn-base btn-secondary" onclick="window.location.hash = '#/bookmarks/folder/${folder.parentFolderId}'">Back to Parent Folder</button>` : ''}
+                    <button class="btn-base btn-secondary" onclick="window.location.hash = '#/bookmarks'">Back to Root</button>
+                    <!-- Only show Back to Parent if we are in a subfolder (pathArray.length > 2) -->
+                    ${pathArray.length > 2 ? `<button class="btn-base btn-secondary" onclick="window.location.hash = '${parentHash}'">Back to Parent Folder</button>` : ''}
                 </div>
                  <div class="app-card mb-8">
                     <h2 class="text-2xl font-semibold mb-4 text-center">Add a New Link</h2>
@@ -524,7 +530,7 @@
             document.getElementById('search-input').addEventListener('input', () => filterAndSortBookmarks(folderId));
             document.getElementById('sort-select').addEventListener('change', () => filterAndSortBookmarks(folderId));
             document.getElementById('add-folder-btn').addEventListener('click', handleAddFolderButtonClick);
-            setupRealtimeListener('folders', folderId); // Load subfolders
+            setupRealtimeListener('folders', folderId); // Load subfolders (parentFolderId = folderId)
             setupRealtimeListener('bookmarks', folderId); // Load bookmarks in this folder
             filterAndSortBookmarks(folderId);
         };
@@ -694,12 +700,28 @@
 
         const router = () => {
             if (!isAuthReady) return;
-            const path = window.location.hash.slice(1).split('/');
-            const route = path[1] || 'bookmarks';
-            const folderId = path[2] === 'folder' ? path[3] : null;
+            const hash = window.location.hash.slice(1);
+            const path = hash.split('/').filter(p => p);
+            
+            const route = path[0] || 'bookmarks';
+
+            let currentFolderId = null;
+            let currentPathArray = []; // Stores the full path segment (e.g., ['folder', 'id1', 'subfolder', 'id2'])
+
+            // Parse for nested folder structure: /bookmarks/folder/123/subfolder/456
+            if (path[0] === 'bookmarks') {
+                for (let i = 1; i < path.length; i += 2) {
+                    if ((path[i] === 'folder' || path[i] === 'subfolder') && path[i + 1]) {
+                        currentFolderId = path[i + 1];
+                        currentPathArray.push(path[i], currentFolderId);
+                    } else {
+                        break;
+                    }
+                }
+            }
 
             if (route === 'share') {
-                 renderSharedView(path[2], path[3]);
+                 renderSharedView(path[1], path[2]);
             } else if (!userId) {
                  if (route === 'signin') {
                      renderSignInView();
@@ -708,12 +730,13 @@
                  } else {
                      window.location.hash = '#/signin';
                  }
-            } else if (route === 'notes' && path[2]) {
-                 renderNoteEditorView(path[2]);
+            } else if (route === 'notes' && path[1]) {
+                 renderNoteEditorView(path[1]);
             } else if (route === 'notes') {
                  renderNotesView();
-            } else if (route === 'bookmarks' && folderId) {
-                renderFolderContentsView(folderId);
+            } else if (currentFolderId) {
+                // Pass the current folder ID (for Firestore query) and the path array (for dynamic links)
+                renderFolderContentsView(currentFolderId, currentPathArray);
             } else {
                  renderBookmarksView();
             }
@@ -731,12 +754,15 @@
                     isAuthReady = true;
                     if (userId) {
                         logoutBtn.classList.remove('hidden');
-                        if (['signin', 'signup'].includes(window.location.hash.slice(2))) {
+                        // Redirect logged-in users away from auth pages
+                        const currentRoute = window.location.hash.slice(2).split('/')[0];
+                        if (['signin', 'signup', ''].includes(currentRoute)) {
                             window.location.hash = '#/bookmarks';
                         }
                     } else {
                         logoutBtn.classList.add('hidden');
-                        if (!['signin', 'signup'].includes(window.location.hash.slice(2))) {
+                        // Force sign-in view if not authenticated
+                        if (!['signin', 'signup', 'share'].includes(window.location.hash.slice(2).split('/')[0])) {
                             window.location.hash = '#/signin';
                         }
                     }
@@ -854,12 +880,14 @@
                  if (loadingSpinner) loadingSpinner.classList.remove('hidden');
                  if (list) list.classList.add('hidden');
                  const colRef = collection(db, `users/${userId}/folders`);
+                 // Query for folders where parentFolderId matches the current folderId
                  const q = query(colRef, where('parentFolderId', '==', parentId));
                  unsubscribeFolders = onSnapshot(q, (snapshot) => {
                      foldersCache = [];
                      snapshot.forEach(doc => {
                          foldersCache.push({ id: doc.id, ...doc.data() });
                      });
+                     // Render using the full folder cache (which contains all folders)
                      renderFoldersList(foldersCache);
                      populateFolderSelect();
                      if (loadingSpinner) loadingSpinner.classList.add('hidden');
@@ -957,6 +985,8 @@
             try {
                 await deleteFolderAndContents(id);
                 showToast("Folder and all its contents deleted!");
+                // After deletion, navigate to the root or parent folder
+                window.location.hash = '#/bookmarks'; 
             } catch (error) {
                 console.error("Error deleting folder and contents:", error);
                 showToast("Failed to delete folder and contents.", "error");
@@ -970,7 +1000,8 @@
                 await addDoc(colRef, {
                     name,
                     url,
-                    folderId: folderId || null,
+                    // Store null if no folder is selected (top-level)
+                    folderId: folderId || null, 
                     createdAt: new Date().toISOString()
                 });
                 showToast("Bookmark saved successfully!");
@@ -1028,7 +1059,8 @@
                 const colRef = collection(db, `users/${userId}/folders`);
                 await addDoc(colRef, {
                     name,
-                    parentFolderId: parentFolderId,
+                    // Store null if no parent is selected (top-level)
+                    parentFolderId: parentFolderId || null,
                     createdAt: new Date().toISOString()
                 });
                 showToast("Folder created successfully!");
@@ -1179,6 +1211,7 @@
             renderBookmarksList(filteredBookmarks);
         };
 
+        // Modified to build nested hash links for subfolders
         const renderFoldersList = (folders) => {
             const foldersList = document.getElementById('folders-list');
             if (!foldersList) return;
@@ -1188,11 +1221,24 @@
                  foldersList.innerHTML = `<li class="text-center text-gray-500 py-8">No folders found.</li>`;
             }
 
+            // Get the current hash path prefix to build the next level of navigation
+            const currentHashPrefix = window.location.hash.split('?')[0]; 
+            // Checks if we are on the root bookmark page (#/bookmarks) or inside a folder structure
+            const isRootView = currentHashPrefix === '#/bookmarks'; 
+
             folders.forEach(folder => {
                  const li = document.createElement('li');
+                 
+                 // Generate the next folder link:
+                 // If root view: #/bookmarks/folder/[id]
+                 // If inside a folder: [currentHashPrefix]/subfolder/[id]
+                 const nextFolderLink = isRootView 
+                     ? `#/bookmarks/folder/${folder.id}` 
+                     : `${currentHashPrefix}/subfolder/${folder.id}`;
+
                  li.className = 'flex items-center justify-between p-4 bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 transition-colors duration-300 cursor-pointer';
                  li.innerHTML = `
-                      <a href="#/bookmarks/folder/${folder.id}" class="flex-1 text-lg font-semibold text-blue-500 hover:underline truncate">
+                      <a href="${nextFolderLink}" class="flex-1 text-lg font-semibold text-blue-500 hover:underline truncate">
                           <svg class="w-6 h-6 inline-block mr-2" fill="currentColor" viewBox="0 0 24 24"><path d="M10 4H4c-1.11 0-2 .89-2 2v12a2 2 0 002 2h16a2 2 0 002-2V8a2 2 0 00-2-2h-8l-2-2z" /></svg>
                           <span>${folder.name}</span>
                       </a>
@@ -1216,12 +1262,17 @@
             if (!select) return;
 
             select.innerHTML = '<option value="">(No Folder)</option>';
-            foldersCache.forEach(folder => {
-                const option = document.createElement('option');
-                option.value = folder.id;
-                option.textContent = folder.name;
-                select.appendChild(option);
-            });
+            // Only populate the root bookmark view's select dropdown with top-level folders
+            if (window.location.hash === '#/bookmarks') {
+                foldersCache.filter(f => f.parentFolderId === null).forEach(folder => {
+                    const option = document.createElement('option');
+                    option.value = folder.id;
+                    option.textContent = folder.name;
+                    select.appendChild(option);
+                });
+            } else {
+                 // In nested folder views, this dropdown is hidden by the HTML template
+            }
         };
 
         const renderBookmarksList = (bookmarks) => {
@@ -1332,10 +1383,12 @@
         const handleAddFolderFormSubmit = (e) => {
             e.preventDefault();
             const name = document.getElementById('add-folder-name').value;
-            const parentId = e.target.dataset.parentId || null;
+            // Get parent ID from the form's data attribute, set by handleAddFolderButtonClick
+            const parentId = e.target.dataset.parentId || null; 
             addFolder(name, parentId);
         };
         const handleAddFolderButtonClick = (e) => {
+            // Set the parentId for the folder creation form based on the button's data attribute
             addFolderForm.dataset.parentId = e.currentTarget.dataset.parentId || '';
             showModal(folderModal);
         };
